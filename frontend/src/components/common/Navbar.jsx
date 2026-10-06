@@ -18,7 +18,17 @@ function Navbar() {
 
         <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
           <a href="#home" onClick={() => setMenuOpen(false)}>Home</a>
-          <a href="#parking" onClick={() => setMenuOpen(false)}>Find Parking</a>
+          <a
+            href="/parking"
+            onClick={(event) => {
+              event.preventDefault()
+              setMenuOpen(false)
+              window.history.pushState({}, '', '/parking')
+              window.dispatchEvent(new PopStateEvent('popstate'))
+            }}
+          >
+            Find Parking
+          </a>
           <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How It Works</a>
         </nav>
 

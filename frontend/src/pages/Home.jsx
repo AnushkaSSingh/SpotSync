@@ -94,7 +94,13 @@ function Home() {
                 aria-label="Parking location"
               />
 
-              <button className="search-button">
+              <button
+                className="search-button"
+                onClick={() => {
+                  window.history.pushState({}, '', '/parking')
+                  window.dispatchEvent(new PopStateEvent('popstate'))
+                }}
+              >
                 <Search size={19} />
                 Find Parking
               </button>
