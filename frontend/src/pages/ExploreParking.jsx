@@ -214,7 +214,7 @@ function ParkingMap({ parking }) {
   )
 }
 
-export default function ExploreParking() {
+export default function ExploreParking({ onNavigate }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('distance')
   const [showFilters, setShowFilters] = useState(false)
@@ -397,6 +397,7 @@ export default function ExploreParking() {
                   parking={parking}
                   saved={saved.includes(parking.id)}
                   onSave={toggleSaved}
+                  onNavigate={onNavigate}
                 />
               ))}
             </div>

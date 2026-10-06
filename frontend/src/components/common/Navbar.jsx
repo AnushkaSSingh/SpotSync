@@ -1,43 +1,89 @@
 import { Car, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
+function navigate(path) {
+  window.history.pushState({}, '', path)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+
+  function goHome(hash = '') {
+    setMenuOpen(false)
+    navigate(`/${hash}`)
+  }
 
   return (
     <header className="navbar">
       <div className="container navbar-inner">
-        <a href="/" className="brand" aria-label="SpotSync home">
+        <button
+          type="button"
+          className="brand"
+          onClick={() => goHome()}
+          aria-label="SpotSync home"
+        >
           <span className="brand-mark">
             <Car size={20} />
           </span>
+
           <span>
             Spot<span>Sync</span>
           </span>
-        </a>
+        </button>
 
         <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
-          <a href="#home" onClick={() => setMenuOpen(false)}>Home</a>
-          <a
-            href="/parking"
-            onClick={(event) => {
-              event.preventDefault()
+          <button
+            type="button"
+            onClick={() => goHome('#home')}
+          >
+            Home
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
               setMenuOpen(false)
-              window.history.pushState({}, '', '/parking')
-              window.dispatchEvent(new PopStateEvent('popstate'))
+              navigate('/parking')
             }}
           >
             Find Parking
-          </a>
-          <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How It Works</a>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => goHome('#how-it-works')}
+          >
+            How It Works
+          </button>
         </nav>
 
         <div className="nav-actions">
-          <button className="login-button">Log in</button>
-          <button className="primary-button small">Get Started</button>
+          <button
+            type="button"
+            className="login-button"
+            onClick={() => {
+              setMenuOpen(false)
+              navigate('/login')
+            }}
+          >
+            Log in
+          </button>
+
+          <button
+            type="button"
+            className="primary-button small"
+            onClick={() => {
+              setMenuOpen(false)
+              navigate('/register')
+            }}
+          >
+            Get Started
+          </button>
         </div>
 
         <button
+          type="button"
           className="mobile-menu-button"
           onClick={() => setMenuOpen((current) => !current)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
