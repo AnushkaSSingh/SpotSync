@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "sensor_manager.h"
 #include "pins.h"
 
