@@ -1,4 +1,4 @@
-export default function Login() {
+ï»¿export default function Login() {
   return (
     <main className="auth-page">
       <div className="auth-card">
@@ -6,7 +6,15 @@ export default function Login() {
         <h1>Log in to SpotSync</h1>
         <p>Access your parking reservations and saved spots.</p>
 
-        <form onSubmit={(event) => { event.preventDefault(); alert('Logged in successfully!') }}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            localStorage.setItem('spotsync_logged_in', 'true')
+            alert('Logged in successfully!')
+            window.history.pushState({}, '', '/home')
+            window.dispatchEvent(new PopStateEvent('popstate'))
+          }}
+        >
           <label>
             Email
             <input type="email" placeholder="you@example.com" required />
@@ -14,7 +22,7 @@ export default function Login() {
 
           <label>
             Password
-            <input type="password" placeholder="••••••••" required />
+            <input type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required />
           </label>
 
           <button type="submit" className="primary-button">
@@ -38,4 +46,3 @@ export default function Login() {
     </main>
   )
 }
-

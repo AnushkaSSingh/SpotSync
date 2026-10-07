@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import MainLayout from './layouts/MainLayout'
 import Home from './pages/Home'
 import ExploreParking from './pages/ExploreParking'
@@ -15,6 +15,7 @@ function App() {
     window.history.pushState({}, '', path)
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
+
   const [path, setPath] = useState(window.location.pathname)
 
   useEffect(() => {
@@ -29,9 +30,24 @@ function App() {
     }
   }, [])
 
-  let page = <Home />
+  const isLoggedIn = localStorage.getItem('spotsync_logged_in') === 'true'
 
-  if (path === '/parking') {
+  const protectedPaths = [
+    '/home',
+    '/parking',
+    '/parking-details',
+    '/booking',
+    '/payment',
+    '/booking-confirmation',
+  ]
+
+  let page = <Login />
+
+  if (protectedPaths.includes(path) && !isLoggedIn) {
+    page = <Login />
+  } else if (path === '/home') {
+    page = <Home />
+  } else if (path === '/parking') {
     page = <ExploreParking onNavigate={navigate} />
   } else if (path === '/parking-details') {
     page = <ParkingDetails />
@@ -53,8 +69,3 @@ function App() {
 }
 
 export default App
-
-
-
-
-

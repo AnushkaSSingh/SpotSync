@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+﻿import { useMemo } from 'react'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -22,7 +22,7 @@ export default function BookingConfirmation() {
   const total = Number(params.get('total')) || 70
 
   function goHome() {
-    window.history.pushState({}, '', '/')
+    window.history.pushState({}, '', '/home')
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
@@ -91,4 +91,5 @@ export default function BookingConfirmation() {
     </main>
   )
 }
+
 

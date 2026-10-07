@@ -6,10 +6,15 @@
         <h1>Create your account</h1>
         <p>Save parking spots and manage your reservations easily.</p>
 
-        <form onSubmit={(event) => {
-  event.preventDefault()
-  alert('Account created successfully!')
-}}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            localStorage.setItem('spotsync_logged_in', 'true')
+            alert('Account created successfully!')
+            window.history.pushState({}, '', '/home')
+            window.dispatchEvent(new PopStateEvent('popstate'))
+          }}
+        >
           <label>
             Full name
             <input type="text" placeholder="Your name" required />
