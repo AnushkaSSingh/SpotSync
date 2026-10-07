@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 
-from app.api.routes.auth import router as auth_router
-from app.api.routes.payments import router as payments_router
+from app.api.router import api_router
 
 app = FastAPI(title="SpotSync")
 
-app.include_router(auth_router)
-app.include_router(payments_router)
+app.include_router(api_router)
 
 
 @app.get("/")
