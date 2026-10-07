@@ -48,3 +48,36 @@ def get_available_parking_slots(
         )
         .order_by(ParkingSlot.id)
     ).all()
+
+
+def get_parking_occupancy(
+    db: Session,
+    parking_lot_id: int,
+):
+    slots = get_parking_slots(db, parking_lot_id)
+
+    total_slots = len(slots)
+
+    if total_slots == 0:
+        return {
+            "total_slots": 0,
+            "occupied_slots": 0,
+            "available_slots": 0,
+            "occupancy_rate": 0.0,
+        }
+
+    available_slots = sum(
+        1 for slot in slots
+        if slot.is_available
+    )
+
+    occupied_slots = total_slots - available_slots
+
+    occupancy_rate = occupied_slots / total_slots
+
+    return {
+        "total_slots": total_slots,
+        "occupied_slots": occupied_slots,
+        "available_slots": available_slots,
+        "occupancy_rate": round(occupancy_rate, 4),
+    }
