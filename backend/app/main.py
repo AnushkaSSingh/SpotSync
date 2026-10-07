@@ -27,14 +27,30 @@ from app.websocket.parking_updates import router as parking_websocket_router
 async def lifespan(app: FastAPI):
     mqtt_client = None
 
-    start_scheduler()
+    try:
+        mqtt_client = create_mqtt_client()
+        mqtt_client.on_connect = on_connect
+        mqtt_client.on_message = on_message
 
+        mqtt_thread = Thread(
+            target=mqtt_client.loop_forever,
+            daemon=True,
+        )
+        mqtt_thread.start()
+        print("MQTT client started")
+    except Exception as exc:
+        print(f"MQTT unavailable - continuing without MQTT: {exc}")
+
+    start_scheduler()
     yield
 
     if mqtt_client:
-        mqtt_client.disconnect()
-    stop_scheduler()
+        try:
+            mqtt_client.disconnect()
+        except Exception:
+            pass
 
+    stop_scheduler()
 
 app = FastAPI(
     title="SpotSync API",
