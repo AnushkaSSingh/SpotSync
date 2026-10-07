@@ -4,11 +4,17 @@ import Home from './pages/Home'
 import ExploreParking from './pages/ExploreParking'
 import ParkingDetails from './pages/ParkingDetails'
 import BookingDetails from './pages/BookingDetails'
+import Payment from './pages/Payment'
+import BookingConfirmation from './pages/BookingConfirmation'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Help from './pages/Help'
 
 function App() {
+  function navigate(path) {
+    window.history.pushState({}, '', path)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
   const [path, setPath] = useState(window.location.pathname)
 
   useEffect(() => {
@@ -26,11 +32,15 @@ function App() {
   let page = <Home />
 
   if (path === '/parking') {
-    page = <ExploreParking />
+    page = <ExploreParking onNavigate={navigate} />
   } else if (path === '/parking-details') {
     page = <ParkingDetails />
   } else if (path === '/booking') {
     page = <BookingDetails />
+  } else if (path === '/payment') {
+    page = <Payment />
+  } else if (path === '/booking-confirmation') {
+    page = <BookingConfirmation />
   } else if (path === '/login') {
     page = <Login />
   } else if (path === '/register') {
@@ -43,3 +53,8 @@ function App() {
 }
 
 export default App
+
+
+
+
+

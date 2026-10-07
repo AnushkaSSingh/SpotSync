@@ -74,7 +74,7 @@ const parkingData = [
   },
 ]
 
-function ParkingCard({ parking, saved, onSave }) {
+function ParkingCard({ parking, saved, onSave, onNavigate }) {
   return (
     <article className="explore-parking-card">
       <div className="explore-card-visual">
@@ -146,9 +146,7 @@ function ParkingCard({ parking, saved, onSave }) {
           </div>
         </div>
 
-        <button className="view-parking-button">
-          View parking
-        </button>
+        <button className="view-parking-button" onClick={() => onNavigate?.(`/parking-details?parking=${parking.id}`)}>View parking</button>
       </div>
     </article>
   )
@@ -419,3 +417,4 @@ export default function ExploreParking({ onNavigate }) {
     </main>
   )
 }
+
