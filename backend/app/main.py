@@ -25,22 +25,14 @@ from app.websocket.parking_updates import router as parking_websocket_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    mqtt_client = create_mqtt_client()
-
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
-
-    mqtt_thread = Thread(
-        target=mqtt_client.loop_forever,
-        daemon=True,
-    )
-    mqtt_thread.start()
+    mqtt_client = None
 
     start_scheduler()
 
     yield
 
-    mqtt_client.disconnect()
+    if mqtt_client:
+        mqtt_client.disconnect()
     stop_scheduler()
 
 
