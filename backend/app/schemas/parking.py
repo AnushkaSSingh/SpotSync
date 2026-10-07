@@ -1,29 +1,30 @@
-from decimal import Decimal
-
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, Field
 
 
-class ParkingSlotResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    parking_lot_id: int
-    slot_number: str
-    slot_type: str
-    is_available: bool
-
-
-class ParkingLotResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class ParkingOverviewItem(BaseModel):
     id: int
     name: str
-    address: str
-    latitude: Decimal | None = None
-    longitude: Decimal | None = None
     total_slots: int
-    is_active: bool
+    occupied_slots: int
+    available_slots: int
+    occupancy_rate: float
 
 
-class ParkingLotDetailResponse(ParkingLotResponse):
-    slots: list[ParkingSlotResponse]
+class ParkingOverviewResponse(BaseModel):
+    parking_lots: list[ParkingOverviewItem]
+
+
+class ParkingPredictionRequest(BaseModel):
+    parking_lot_id: int = Field(..., gt=0)
+    hour: int = Field(..., ge=0, le=23)
+    day_of_week: int = Field(..., ge=0, le=6)
+
+
+class ParkingPredictionResponse(BaseModel):
+    parking_lot_id: int
+    name: str
+    current_occupancy: float
+    predicted_occupancy: float
+    predicted_percentage: float
+    available_percentage: float
+    status: str
