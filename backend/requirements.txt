@@ -13,3 +13,4 @@ scikit-learn
 joblib
 numpy
 apscheduler
+pytest
