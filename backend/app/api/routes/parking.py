@@ -1,95 +1,48 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user
-from app.core.database import get_db
-from app.repositories.parking_repository import (
-    get_active_parking_lots,
-    get_available_parking_slots,
-    get_parking_lot_by_id,
-    get_parking_slots,
-)
+from app.api.dependencies import get_db
 from app.schemas.parking import (
-    ParkingLotDetailResponse,
-    ParkingLotResponse,
-    ParkingSlotResponse,
+    ParkingOverviewResponse,
+    ParkingPredictionRequest,
+    ParkingPredictionResponse,
 )
-
-router = APIRouter(
-    prefix="/parking",
-    tags=["Parking"],
-)
+from app.services.parking_service import parking_service
 
 
-@router.get(
-    "",
-    response_model=list[ParkingLotResponse],
-)
-def list_parking_lots(
+router = APIRouter(prefix="/parking", tags=["Parking"])
+
+
+@router.get("/overview", response_model=ParkingOverviewResponse)
+def get_parking_overview(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    return get_active_parking_lots(db)
-
-
-@router.get(
-    "/{parking_lot_id}",
-    response_model=ParkingLotDetailResponse,
-)
-def get_parking_lot(
-    parking_lot_id: int,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    parking_lot = get_parking_lot_by_id(db, parking_lot_id)
-
-    if not parking_lot:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Parking lot not found",
-        )
+    parking_lots = parking_service.get_parking_overview(db)
 
     return {
-        **parking_lot.__dict__,
-        "slots": get_parking_slots(db, parking_lot_id),
+        "parking_lots": parking_lots,
     }
 
 
-@router.get(
-    "/{parking_lot_id}/slots",
-    response_model=list[ParkingSlotResponse],
+@router.post(
+    "/predict",
+    response_model=ParkingPredictionResponse,
 )
-def list_parking_slots(
-    parking_lot_id: int,
+def predict_parking(
+    request: ParkingPredictionRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
 ):
-    parking_lot = get_parking_lot_by_id(db, parking_lot_id)
+    prediction = parking_service.predict_parking_occupancy(
+        db=db,
+        parking_lot_id=request.parking_lot_id,
+        hour=request.hour,
+        day_of_week=request.day_of_week,
+    )
 
-    if not parking_lot:
+    if prediction is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Parking lot not found",
         )
 
-    return get_parking_slots(db, parking_lot_id)
-
-
-@router.get(
-    "/{parking_lot_id}/slots/available",
-    response_model=list[ParkingSlotResponse],
-)
-def list_available_parking_slots(
-    parking_lot_id: int,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    parking_lot = get_parking_lot_by_id(db, parking_lot_id)
-
-    if not parking_lot:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Parking lot not found",
-        )
-
-    return get_available_parking_slots(db, parking_lot_id)
+    return prediction

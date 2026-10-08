@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -10,9 +15,12 @@ class Settings(BaseSettings):
 
     razorpay_key_id: str
     razorpay_key_secret: str
+    mqtt_broker: str = "localhost"
+    mqtt_port: int = 1883
+    mqtt_client_id: str = "spotsync-backend"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
     )
