@@ -1,4 +1,4 @@
-import { Car, Menu, X } from 'lucide-react'
+﻿import { Car, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 
 function navigate(path) {
@@ -6,12 +6,35 @@ function navigate(path) {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
+function goHome(hash = '') {
+  window.history.pushState({}, '', `/${hash}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+
+  if (hash) {
+    setTimeout(() => {
+      document.getElementById(hash.replace('#', ''))?.scrollIntoView({
+        behavior: 'smooth',
+      })
+    }, 50)
+  } else {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
+  }
+}
+
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
-  function goHome(hash = '') {
+  function handleHome(hash = '') {
     setMenuOpen(false)
-    navigate(`/${hash}`)
+    goHome(hash)
+  }
+
+  function handleNavigation(path) {
+    setMenuOpen(false)
+    navigate(path)
   }
 
   return (
@@ -20,7 +43,7 @@ function Navbar() {
         <button
           type="button"
           className="brand"
-          onClick={() => goHome()}
+          onClick={() => handleHome()}
           aria-label="SpotSync home"
         >
           <span className="brand-mark">
@@ -35,24 +58,21 @@ function Navbar() {
         <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
           <button
             type="button"
-            onClick={() => goHome('#home')}
+            onClick={() => handleHome('#home')}
           >
             Home
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              setMenuOpen(false)
-              navigate('/parking')
-            }}
+            onClick={() => handleNavigation('/parking')}
           >
             Find Parking
           </button>
 
           <button
             type="button"
-            onClick={() => goHome('#how-it-works')}
+            onClick={() => handleHome('#how-it-works')}
           >
             How It Works
           </button>
@@ -62,10 +82,7 @@ function Navbar() {
           <button
             type="button"
             className="login-button"
-            onClick={() => {
-              setMenuOpen(false)
-              navigate('/login')
-            }}
+            onClick={() => handleNavigation('/login')}
           >
             Log in
           </button>
@@ -73,10 +90,7 @@ function Navbar() {
           <button
             type="button"
             className="primary-button small"
-            onClick={() => {
-              setMenuOpen(false)
-              navigate('/register')
-            }}
+            onClick={() => handleNavigation('/register')}
           >
             Get Started
           </button>
@@ -96,3 +110,4 @@ function Navbar() {
 }
 
 export default Navbar
+
