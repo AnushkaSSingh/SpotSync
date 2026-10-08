@@ -1,4 +1,57 @@
-﻿export default function Login() {
+﻿import { useState } from 'react'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+
+export default function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || data.message || 'Invalid email or password.'
+        )
+      }
+
+      localStorage.setItem('spotsync_logged_in', 'true')
+
+      if (data.access_token) {
+        localStorage.setItem('spotsync_token', data.access_token)
+      }
+
+      alert('Logged in successfully!')
+
+      window.history.pushState({}, '', '/home')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    } catch (err) {
+      setError(err.message || 'Login failed.')
+      localStorage.removeItem('spotsync_logged_in')
+      localStorage.removeItem('spotsync_token')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <main className="auth-page">
       <div className="auth-card">
@@ -6,27 +59,41 @@
         <h1>Log in to SpotSync</h1>
         <p>Access your parking reservations and saved spots.</p>
 
-        <form
-          onSubmit={(event) => {
-            event.preventDefault()
-            localStorage.setItem('spotsync_logged_in', 'true')
-            alert('Logged in successfully!')
-            window.history.pushState({}, '', '/home')
-            window.dispatchEvent(new PopStateEvent('popstate'))
-          }}
-        >
+        <form onSubmit={handleSubmit}>
           <label>
             Email
-            <input type="email" placeholder="you@example.com" required />
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
           </label>
 
           <label>
             Password
-            <input type="password" placeholder="••••••••" required />
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
           </label>
 
-          <button type="submit" className="primary-button">
-            Log in
+          {error && (
+            <p role="alert" className="auth-error">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={loading}
+          >
+            {loading ? 'Logging in...' : 'Log in'}
           </button>
         </form>
 
