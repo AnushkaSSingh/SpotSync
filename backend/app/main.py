@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import auth, bookings, parking, payments
-
+from app.api.routes import analytics
 app = FastAPI(
     title="SpotSync API",
     description="Backend API for SpotSync parking management and booking",
@@ -27,7 +27,7 @@ app.include_router(auth.router)
 app.include_router(parking.router)
 app.include_router(bookings.router)
 app.include_router(payments.router)
-
+app.include_router(analytics.router)
 
 @app.get("/")
 def root():

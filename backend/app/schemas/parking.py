@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 class ParkingOverviewItem(BaseModel):
     id: int
     name: str
+    address: str | None = None
     total_slots: int
     occupied_slots: int
     available_slots: int

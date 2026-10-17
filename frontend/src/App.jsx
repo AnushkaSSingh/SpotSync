@@ -9,6 +9,7 @@ import BookingConfirmation from './pages/BookingConfirmation'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Help from './pages/Help'
+import AdminDashboard from './pages/AdminDashboard'
 
 function App() {
   function navigate(path) {
@@ -63,7 +64,10 @@ function App() {
     page = <Register />
   } else if (path === '/help') {
     page = <Help />
+  } else if (path === '/admin') {
+    page = <AdminDashboard />
   }
+
 
   return <MainLayout>{page}</MainLayout>
 }

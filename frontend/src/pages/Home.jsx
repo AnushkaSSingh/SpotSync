@@ -1,3 +1,4 @@
+
 import {
   ArrowRight,
   Car,
@@ -7,31 +8,8 @@ import {
   ShieldCheck,
   Zap,
 } from 'lucide-react'
-import { useState } from 'react'
-
-const parkingSpots = [
-  {
-    name: 'City Center Parking',
-    distance: '0.4 km',
-    available: 18,
-    total: 42,
-    price: '₹30/hr',
-  },
-  {
-    name: 'Metro Plaza Parking',
-    distance: '0.8 km',
-    available: 7,
-    total: 25,
-    price: '₹40/hr',
-  },
-  {
-    name: 'Tech Park Parking',
-    distance: '1.2 km',
-    available: 31,
-    total: 60,
-    price: '₹25/hr',
-  },
-]
+import { useEffect, useState } from 'react'
+import api from '../services/api'
 
 const features = [
   {
@@ -62,6 +40,29 @@ const features = [
 
 function Home() {
   const [location, setLocation] = useState('')
+  const [parkingSpots, setParkingSpots] = useState([])
+  const [parkingLoading, setParkingLoading] = useState(true)
+  const [parkingError, setParkingError] = useState('')
+
+  useEffect(() => {
+    api
+      .get('/parking/overview')
+      .then((response) => {
+        setParkingSpots(response.data.parking_lots || [])
+      })
+      .catch((error) => {
+        console.error('Failed to load parking data:', error)
+        setParkingError('Unable to load parking data. Please try again.')
+      })
+      .finally(() => {
+        setParkingLoading(false)
+      })
+  }, [])
+
+  const openParkingPage = () => {
+    window.history.pushState({}, '', '/parking')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
 
   return (
     <>
@@ -96,10 +97,7 @@ function Home() {
 
               <button
                 className="search-button"
-                onClick={() => {
-                  window.history.pushState({}, '', '/parking')
-                  window.dispatchEvent(new PopStateEvent('popstate'))
-                }}
+                onClick={openParkingPage}
               >
                 <Search size={19} />
                 Find Parking
@@ -124,7 +122,10 @@ function Home() {
             </div>
           </div>
 
-          <div className="hero-visual" aria-label="Parking availability preview">
+          <div
+            className="hero-visual"
+            aria-label="Parking availability preview"
+          >
             <div className="map-card">
               <div className="map-header">
                 <div>
@@ -167,7 +168,11 @@ function Home() {
                   <strong>City Center Parking</strong>
                 </div>
 
-                <button className="icon-button" aria-label="View parking">
+                <button
+                  className="icon-button"
+                  aria-label="View parking"
+                  onClick={openParkingPage}
+                >
                   <ArrowRight size={19} />
                 </button>
               </div>
@@ -184,40 +189,65 @@ function Home() {
               <h2>Spaces available right now</h2>
             </div>
 
-            <button className="text-button">
+            <button
+              className="text-button"
+              onClick={openParkingPage}
+            >
               View all
               <ArrowRight size={17} />
             </button>
           </div>
 
           <div className="parking-grid">
-            {parkingSpots.map((spot) => (
-              <article className="parking-card" key={spot.name}>
-                <div className="parking-card-icon">
-                  <Car size={21} />
-                </div>
-
-                <div className="parking-card-main">
-                  <div className="parking-card-title">
-                    <h3>{spot.name}</h3>
-                    <span className="available">Available</span>
+            {parkingLoading ? (
+              <p>Loading parking spaces...</p>
+            ) : parkingError ? (
+              <p role="alert">{parkingError}</p>
+            ) : parkingSpots.length === 0 ? (
+              <p>No parking spaces available right now.</p>
+            ) : (
+              parkingSpots.map((spot) => (
+                <article className="parking-card" key={spot.id}>
+                  <div className="parking-card-icon">
+                    <Car size={21} />
                   </div>
 
-                  <p>
-                    <MapPin size={15} />
-                    {spot.distance} away
-                  </p>
+                  <div className="parking-card-main">
+                    <div className="parking-card-title">
+                      <h3>{spot.name}</h3>
 
-                  <div className="parking-card-bottom">
-                    <span>
-                      <strong>{spot.available}</strong> / {spot.total} spots
-                    </span>
+                      <span
+                        className={
+                          spot.available_slots > 0
+                            ? 'available'
+                            : 'unavailable'
+                        }
+                      >
+                        {spot.available_slots > 0 ? 'Available' : 'Full'}
+                      </span>
+                    </div>
 
-                    <strong>{spot.price}</strong>
+                    <p>
+                      <MapPin size={15} />
+                      {spot.address || 'Location details unavailable'}
+                    </p>
+
+                    <div className="parking-card-bottom">
+                      <span>
+                        <strong>{spot.available_slots}</strong> /{' '}
+                        {spot.total_slots} spots available
+                      </span>
+
+                      <strong>
+                        {spot.occupancy_rate != null
+                          ? `${Math.round(spot.occupancy_rate * 100)}% occupied`
+                          : 'Occupancy unavailable'}
+                      </strong>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))
+            )}
           </div>
         </div>
       </section>
