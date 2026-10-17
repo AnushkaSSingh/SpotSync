@@ -14,7 +14,7 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -33,10 +33,29 @@ export default function Login() {
         )
       }
 
-      localStorage.setItem('spotsync_logged_in', 'true')
+      if (!data.access_token) {
+        throw new Error('No access token was returned by the server.')
+      }
 
-      if (data.access_token) {
-        localStorage.setItem('spotsync_token', data.access_token)
+      localStorage.setItem('spotsync_token', data.access_token)
+      localStorage.setItem('spotsync_logged_in', 'true')
+      localStorage.removeItem('spotsync_user_name')
+
+      try {
+        const profileResponse = await fetch(`${API_URL}/api/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${data.access_token}`,
+          },
+        })
+
+        if (profileResponse.ok) {
+          const profile = await profileResponse.json()
+          if (profile.name) {
+            localStorage.setItem('spotsync_user_name', profile.name)
+          }
+        }
+      } catch (profileError) {
+        console.error('Could not load user profile:', profileError)
       }
 
       alert('Logged in successfully!')
@@ -113,3 +132,4 @@ export default function Login() {
     </main>
   )
 }
+

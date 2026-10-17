@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     razorpay_key_id: str
     razorpay_key_secret: str
+    payment_mode: str = "razorpay"
     mqtt_broker: str = "localhost"
     mqtt_port: int = 1883
     mqtt_client_id: str = "spotsync-backend"

@@ -1,4 +1,4 @@
-import {
+﻿import {
   ArrowRight,
   Car,
   Clock3,
@@ -15,21 +15,21 @@ const parkingSpots = [
     distance: '0.4 km',
     available: 18,
     total: 42,
-    price: '₹30/hr',
+    price: 'â‚¹30/hr',
   },
   {
     name: 'Metro Plaza Parking',
     distance: '0.8 km',
     available: 7,
     total: 25,
-    price: '₹40/hr',
+    price: 'â‚¹40/hr',
   },
   {
     name: 'Tech Park Parking',
     distance: '1.2 km',
     available: 31,
     total: 60,
-    price: '₹25/hr',
+    price: 'â‚¹25/hr',
   },
 ]
 
@@ -184,7 +184,13 @@ function Home() {
               <h2>Spaces available right now</h2>
             </div>
 
-            <button className="text-button">
+            <button
+              className="text-button"
+              onClick={() => {
+                window.history.pushState({}, '', '/parking')
+                window.dispatchEvent(new PopStateEvent('popstate'))
+              }}
+            >
               View all
               <ArrowRight size={17} />
             </button>
@@ -192,7 +198,26 @@ function Home() {
 
           <div className="parking-grid">
             {parkingSpots.map((spot) => (
-              <article className="parking-card" key={spot.name}>
+              <article
+                className="parking-card"
+                key={spot.name}
+                role="link"
+                tabIndex={0}
+                onClick={() => {
+                  window.history.pushState(
+                    {},
+                    '',
+                    `/parking?parking=${encodeURIComponent(spot.name)}`
+                  )
+                  window.dispatchEvent(new PopStateEvent('popstate'))
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    event.currentTarget.click()
+                  }
+                }}
+              >
                 <div className="parking-card-icon">
                   <Car size={21} />
                 </div>
@@ -259,3 +284,4 @@ function Home() {
 }
 
 export default Home
+

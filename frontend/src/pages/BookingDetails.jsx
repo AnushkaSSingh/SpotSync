@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+﻿import { useMemo, useState } from 'react'
 import {
   ArrowLeft,
   Car,
@@ -22,8 +22,19 @@ export default function BookingDetails() {
   const params = useMemo(() => new URLSearchParams(window.location.search), [])
   const slot = params.get('slot') || 'A01'
 
-  const duration = 2
-  const parkingFee = parking.price * duration
+  const [selectedDuration, setSelectedDuration] = useState(2)
+
+  const durationOptions = [
+    { value: 2, label: '2 hours', fee: 60 },
+    { value: 4, label: '4 hours', fee: 120 },
+    { value: 24, label: 'Full day', fee: 250 },
+  ]
+
+  const selectedOption = durationOptions.find(
+    (option) => option.value === selectedDuration
+  )
+  const duration = selectedDuration
+  const parkingFee = selectedOption.fee
   const serviceFee = 10
   const total = parkingFee + serviceFee
 
@@ -125,30 +136,24 @@ export default function BookingDetails() {
               </div>
 
               <div className="duration-options">
-                <button type="button" className="duration-option">
-                  <Clock3 size={18} />
-                  <span>
-                    <strong>2 hours</strong>
-                    <small>₹60 parking fee</small>
-                  </span>
-                  <Check size={17} />
-                </button>
-
-                <button type="button" className="duration-option muted">
-                  <Clock3 size={18} />
-                  <span>
-                    <strong>4 hours</strong>
-                    <small>₹120 parking fee</small>
-                  </span>
-                </button>
-
-                <button type="button" className="duration-option muted">
-                  <Clock3 size={18} />
-                  <span>
-                    <strong>Full day</strong>
-                    <small>₹250 parking fee</small>
-                  </span>
-                </button>
+                {durationOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`duration-option ${
+                      selectedDuration === option.value ? 'selected' : ''
+                    }`}
+                    aria-pressed={selectedDuration === option.value}
+                    onClick={() => setSelectedDuration(option.value)}
+                  >
+                    <Clock3 size={18} />
+                    <span>
+                      <strong>{option.label}</strong>
+                      <small>₹{option.fee} parking fee</small>
+                    </span>
+                    {selectedDuration === option.value && <Check size={17} />}
+                  </button>
+                ))}
               </div>
             </article>
 
@@ -175,7 +180,7 @@ export default function BookingDetails() {
 
               <div>
                 <span>Duration</span>
-                <strong>{duration} hours</strong>
+                <strong>{selectedOption.label}</strong>
               </div>
 
               <div>
@@ -209,3 +214,5 @@ export default function BookingDetails() {
     </main>
   )
 }
+
+
