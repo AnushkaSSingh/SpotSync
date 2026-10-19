@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 
 from app.repositories.analytics_repository import (
     get_prediction_statistics,
-    get_slot_statistics,
+    get_slot_statistics, get_booking_statistics,
+get_revenue_statistics,
 )
 
 
@@ -17,7 +18,15 @@ class AnalyticsService:
             db,
             parking_lot_id,
         )
+        booking_stats = get_booking_statistics(
+            db,
+            parking_lot_id,
+        )
 
+        revenue_stats = get_revenue_statistics(
+            db,
+            parking_lot_id,
+        )
         slot_stats = get_slot_statistics(
             db,
             parking_lot_id,
@@ -40,6 +49,8 @@ class AnalyticsService:
                 4,
             ),
             "predictions": prediction_stats,
+            "bookings": booking_stats,
+            "revenue": revenue_stats,
         }
 
 

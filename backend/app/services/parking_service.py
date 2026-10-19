@@ -24,6 +24,7 @@ class ParkingService:
                 {
                     "id": parking_lot.id,
                     "name": parking_lot.name,
+                    "address": getattr(parking_lot, "address", None),
                     "total_slots": occupancy["total_slots"],
                     "occupied_slots": occupancy["occupied_slots"],
                     "available_slots": occupancy["available_slots"],
