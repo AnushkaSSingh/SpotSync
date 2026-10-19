@@ -1,4 +1,4 @@
-
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from fastapi import FastAPI
@@ -12,6 +12,17 @@ app = FastAPI(
     title="SpotSync API",
     description="Smart parking management API",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://spot-sync-seven.vercel.app",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 default_origins = [
