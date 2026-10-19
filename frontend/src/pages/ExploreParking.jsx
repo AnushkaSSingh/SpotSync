@@ -93,7 +93,7 @@ function ParkingCard({ parking, saved, onSave, onNavigate }) {
 
           {parking.price != null && (
             <div className="parking-price">
-              <strong>₹{parking.price}</strong>
+              <strong>â‚¹{parking.price}</strong>
               <span>/hr</span>
             </div>
           )}
@@ -206,8 +206,12 @@ export default function ExploreParking({ onNavigate }) {
         setLoading(true)
         setError('')
 
+        
         const response = await getParkingOverview()
+
+
         const lots = response?.parking_lots ?? []
+
 
         const mappedLots = lots.map((lot) => ({
           id: lot.id,
