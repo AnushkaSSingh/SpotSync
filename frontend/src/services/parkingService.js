@@ -1,25 +1,30 @@
-import apiRequest from './api'
 
-export const getParkingOverview = () =>
-  apiRequest('/api/parking/overview')
+import api from './api'
 
-export const getParkingSlots = (options = {}) => {
-  const params = new URLSearchParams()
+export const getParkingOverview = async () => {
+  const response = await api.get('/api/parking/overview')
+  return response.data
+}
+
+export const getParkingSlots = async (options = {}) => {
+  const params = {}
 
   if (options.parkingLotId != null) {
-    params.set('parking_lot_id', options.parkingLotId)
+    params.parking_lot_id = options.parkingLotId
   }
 
   if (options.availableOnly != null) {
-    params.set('available_only', String(options.availableOnly))
+    params.available_only = options.availableOnly
   }
 
-  const query = params.toString()
-  return apiRequest(`/api/parking/slots${query ? `?${query}` : ''}`)
+  const response = await api.get('/api/parking/slots', { params })
+  return response.data
 }
 
-export const getLiveParking = () =>
-  apiRequest('/api/parking/live')
+export const getLiveParking = async () => {
+  const response = await api.get('/api/parking/live')
+  return response.data
+}
 
 export default {
   getParkingOverview,
