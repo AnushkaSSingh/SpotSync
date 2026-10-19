@@ -1,3 +1,4 @@
+﻿from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -13,6 +14,7 @@ from app.repositories.booking_repository import (
 )
 from app.repositories.parking_repository import get_parking_lot_by_id
 from app.models.parking_slot import ParkingSlot
+from app.models.vehicle import Vehicle
 
 
 def create_user_booking(
@@ -29,6 +31,23 @@ def create_user_booking(
             detail="End time must be after start time",
         )
 
+    now = datetime.now(timezone.utc)
+    normalized_start = start_time
+    if start_time.tzinfo is None:
+        normalized_start = start_time.replace(tzinfo=timezone.utc)
+
+    if normalized_start < now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Booking cannot start in the past",
+        )
+
+    vehicle = db.get(Vehicle, vehicle_id)
+    if vehicle is None or vehicle.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vehicle not found",
+        )
     slot = db.get(ParkingSlot, parking_slot_id)
 
     if not slot:
@@ -132,3 +151,4 @@ def cancel_user_booking(
     db.refresh(booking)
 
     return booking
+

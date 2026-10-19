@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from 'react'
 import {
   ArrowRight,
   Car,
@@ -8,7 +9,6 @@ import {
   ShieldCheck,
   Zap,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
 import api from '../services/api'
 
 const features = [
@@ -61,6 +61,15 @@ function Home() {
 
   const openParkingPage = () => {
     window.history.pushState({}, '', '/parking')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
+  const openParkingSpot = (spot) => {
+    window.history.pushState(
+      {},
+      '',
+      `/parking?parking=${encodeURIComponent(spot.name || spot.id)}`
+    )
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
@@ -207,23 +216,37 @@ function Home() {
               <p>No parking spaces available right now.</p>
             ) : (
               parkingSpots.map((spot) => (
-                <article className="parking-card" key={spot.id}>
+                <article
+                  className="parking-card"
+                  key={spot.id ?? spot.name}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => openParkingSpot(spot)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      openParkingSpot(spot)
+                    }
+                  }}
+                >
                   <div className="parking-card-icon">
                     <Car size={21} />
                   </div>
 
                   <div className="parking-card-main">
                     <div className="parking-card-title">
-                      <h3>{spot.name}</h3>
+                      <h3>{spot.name || 'Parking location'}</h3>
 
                       <span
                         className={
-                          spot.available_slots > 0
+                          Number(spot.available_slots) > 0
                             ? 'available'
                             : 'unavailable'
                         }
                       >
-                        {spot.available_slots > 0 ? 'Available' : 'Full'}
+                        {Number(spot.available_slots) > 0
+                          ? 'Available'
+                          : 'Full'}
                       </span>
                     </div>
 
@@ -234,13 +257,17 @@ function Home() {
 
                     <div className="parking-card-bottom">
                       <span>
-                        <strong>{spot.available_slots}</strong> /{' '}
-                        {spot.total_slots} spots available
+                        <strong>{spot.available_slots ?? 0}</strong> /{' '}
+                        {spot.total_slots ?? 0} spots available
                       </span>
 
                       <strong>
                         {spot.occupancy_rate != null
-                          ? `${Math.round(spot.occupancy_rate * 100)}% occupied`
+                          ? `${Math.round(
+                              Number(spot.occupancy_rate) <= 1
+                                ? Number(spot.occupancy_rate) * 100
+                                : Number(spot.occupancy_rate)
+                            )}% occupied`
                           : 'Occupancy unavailable'}
                       </strong>
                     </div>

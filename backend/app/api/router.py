@@ -1,21 +1,21 @@
 from fastapi import APIRouter
 
-from app.api.routes.analytics import router as analytics_router
-from app.api.routes.auth import router as auth_router
-from app.api.routes.bookings import router as bookings_router
-from app.api.routes.parking import router as parking_router
-from app.api.routes.payments import router as payments_router
-from app.api.routes.predictions import router as predictions_router
-from app.api.routes.recommendations import router as recommendations_router
+from app.api.routes import (
+    auth,
+    bookings,
+    parking,
+    payments,
+    predictions,
+    recommendations,
+    analytics,
+)
 
+api_router = APIRouter(prefix="/api")
 
-api_router = APIRouter()
-
-api_router.include_router(auth_router)
-api_router.include_router(payments_router)
-api_router.include_router(parking_router)
-api_router.include_router(bookings_router)
-
-api_router.include_router(predictions_router)
-api_router.include_router(recommendations_router)
-api_router.include_router(analytics_router)
+api_router.include_router(auth.router)
+api_router.include_router(bookings.router)
+api_router.include_router(parking.router)
+api_router.include_router(payments.router)
+api_router.include_router(predictions.router)
+api_router.include_router(recommendations.router)
+api_router.include_router(analytics.router)

@@ -3024,3 +3024,235 @@ a {
     border-radius: 20px;
   }
 }
+
+/* SpotSync navbar polish */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(120, 100, 204, 0.13);
+  box-shadow: 0 6px 24px rgba(38, 31, 75, 0.045);
+  transition: box-shadow 180ms ease, background 180ms ease;
+}
+
+.navbar-inner {
+  min-height: 78px;
+  gap: 28px;
+}
+
+.brand {
+  gap: 11px;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.45px;
+  transition: transform 180ms ease;
+}
+
+.brand:hover {
+  transform: translateY(-1px);
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #8875df, #6f59c4);
+  color: #fff;
+  box-shadow: 0 5px 12px rgba(120, 100, 204, 0.22);
+}
+
+.nav-links {
+  gap: 8px;
+}
+
+.nav-links button,
+.nav-actions button {
+  transition: background 180ms ease, color 180ms ease,
+    transform 180ms ease, box-shadow 180ms ease;
+}
+
+.nav-links button {
+  padding: 11px 15px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.nav-links button:hover {
+  background: #f2efff;
+  color: #7059c6;
+}
+
+.nav-actions {
+  gap: 12px;
+}
+
+.nav-actions .login-button {
+  padding: 11px 17px;
+  border-radius: 12px;
+}
+
+.nav-actions .login-button:hover {
+  background: #f2efff;
+  color: #7059c6;
+}
+
+.nav-actions .primary-button {
+  border-radius: 13px;
+  box-shadow: 0 5px 13px rgba(120, 100, 204, 0.2);
+}
+
+.nav-actions .primary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(120, 100, 204, 0.27);
+}
+
+.mobile-menu-button {
+  border-radius: 12px;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.mobile-menu-button:hover {
+  background: #f2efff;
+  color: #7059c6;
+}
+
+@media (max-width: 768px) {
+  .navbar-inner {
+    min-height: 68px;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .nav-links {
+    padding: 12px;
+    border: 1px solid rgba(120, 100, 204, 0.12);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 12px 30px rgba(38, 31, 75, 0.1);
+  }
+}
+
+/* SpotSync navbar: polished default and hover states */
+.nav-links button,
+.nav-actions button {
+  border-radius: 12px;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.nav-links button {
+  padding: 12px 16px;
+}
+
+.nav-links button:hover,
+.nav-links button:focus-visible {
+  color: #7963d1;
+  background-color: #f1edff;
+}
+
+.nav-actions button:hover,
+.nav-actions button:focus-visible {
+  color: #7963d1;
+  background-color: #f1edff;
+  box-shadow: 0 4px 14px rgba(121, 99, 209, 0.12);
+}
+
+.nav-links button:focus:not(:focus-visible),
+.nav-actions button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-links button,
+  .nav-actions button {
+    transition: none;
+  }
+}
+
+/* SpotSync: refined signed-in navbar actions */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.nav-user-greeting {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid #eee9fb;
+  border-radius: 999px;
+  background: #f8f6ff;
+  color: #302b43;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav-user-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #7963d1;
+}
+
+.nav-logout-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid #ded7f4;
+  border-radius: 12px;
+  background: #fff;
+  color: #6f59c4;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .2s ease, border-color .2s ease,
+    color .2s ease, transform .2s ease;
+}
+
+.nav-logout-button:hover {
+  background: #f3efff;
+  border-color: #b9a9ed;
+  color: #5c46b0;
+}
+
+.nav-logout-button:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 768px) {
+  .nav-actions {
+    gap: 8px;
+  }
+
+  .nav-user-greeting {
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .nav-logout-button {
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+}
+
