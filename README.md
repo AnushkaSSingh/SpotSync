@@ -147,53 +147,24 @@ flowchart TD
 
 ## Repository Structure
 
-
-
 ```text
-
 SpotSync/
-
-â”œâ”€â”€ backend/
-
-â”‚   â”œâ”€â”€ app/
-
-â”‚   â”œâ”€â”€ tests/
-
-â”‚   â””â”€â”€ requirements.txt
-
-â”œâ”€â”€ frontend/
-
-â”‚   â”œâ”€â”€ src/
-
-â”‚   â”œâ”€â”€ public/
-
-â”‚   â””â”€â”€ package.json
-
-â”œâ”€â”€ docs/
-
-â”‚   â”œâ”€â”€ api/
-
-â”‚   â”œâ”€â”€ architecture/
-
-â”‚   â”œâ”€â”€ database/
-
-â”‚   â”œâ”€â”€ iot/
-
-â”‚   â”œâ”€â”€ ml/
-
-â”‚   â”œâ”€â”€ screenshots/
-
-â”‚   â””â”€â”€ security/
-
-â”œâ”€â”€ .env.example
-
-â”œâ”€â”€ .gitignore
-
-â””â”€â”€ README.md
-
+|-- backend/
+|   |-- app/
+|   |-- tests/
+|   `-- requirements.txt
+|-- frontend/
+|   |-- src/
+|   |-- public/
+|   `-- package.json
+`-- docs/
+    |-- api/
+    |-- architecture/
+    |-- database/
+    |-- iot/
+    |-- ml/
+    `-- screenshots/
 ```
-
-
 
 ## Getting Started
 
