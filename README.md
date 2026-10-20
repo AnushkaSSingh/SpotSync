@@ -1,30 +1,19 @@
-\# 🅿️ SpotSync
+<div align="center">
 
+# SpotSync
 
+### Smart Parking Discovery, Availability & Management Platform
 
-\### Smart Parking Discovery, Availability \& Management Platform
+[![Frontend](https://img.shields.io/badge/Frontend-Live-2ea44f)](https://spot-sync-seven.vercel.app/)
+[![Backend](https://img.shields.io/badge/Backend-Live-2ea44f)](https://spotsync-api-ag0v.onrender.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 
+**Find parking. Check availability. Park smarter.**
 
+</div>
 
-\[!\[Frontend](https://img.shields.io/badge/Frontend-Live-2ea44f)](https://spot-sync-seven.vercel.app/)
-
-\[!\[Backend](https://img.shields.io/badge/Backend-Live-2ea44f)](https://spotsync-api-ag0v.onrender.com/)
-
-\[!\[React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
-
-\[!\[FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
-
-
-
-<p align="center">
-
-&#x20; <b>Find parking. Check availability. Park smarter.</b>
-
-</p>
-
-
-
-\## 📌 Overview
+## Overview
 
 
 
@@ -36,51 +25,51 @@ The project combines a React frontend with a Python FastAPI backend and a databa
 
 
 
-\### 🌐 Live Demo
+### Key Features
 
 
 
-\- \*\*Frontend:\*\* https://spot-sync-seven.vercel.app/
+- **Frontend:** https://spot-sync-seven.vercel.app/
 
-\- \*\*Backend API:\*\* https://spotsync-api-ag0v.onrender.com/
+- **Backend API:** https://spotsync-api-ag0v.onrender.com/
 
-\- \*\*API Documentation:\*\* https://spotsync-api-ag0v.onrender.com/docs
-
-
-
-\## 🎯 Project Goals
+- **API Documentation:** https://spotsync-api-ag0v.onrender.com/docs
 
 
 
-\- Make parking information easier to access.
-
-\- Present parking availability in a clear interface.
-
-\- Provide an API for parking-related data.
-
-\- Build a foundation for future smart parking integrations.
+## Project Goals
 
 
 
-\## ✨ Key Features
+- Make parking information easier to access.
+
+- Present parking availability in a clear interface.
+
+- Provide an API for parking-related data.
+
+- Build a foundation for future smart parking integrations.
 
 
 
-\- \*\*Parking Overview:\*\* Displays parking facilities and availability counts.
-
-\- \*\*Availability Information:\*\* Shows available and occupied parking spaces in the current demo data.
-
-\- \*\*Web Interface:\*\* Built with React and Vite.
-
-\- \*\*REST API:\*\* FastAPI-based backend with interactive API documentation.
-
-\- \*\*Database Integration:\*\* SQLAlchemy and PostgreSQL-compatible database configuration.
-
-\- \*\*Extensible Architecture:\*\* Dependencies are included for potential payment, MQTT, and machine-learning functionality; availability of these dependencies does not mean every integration is fully implemented.
+## Key Features
 
 
 
-\## 🏗️ System Architecture
+- **Parking Overview:** Displays parking facilities and availability counts.
+
+- **Availability Information:** Shows available and occupied parking spaces in the current demo data.
+
+- **Web Interface:** Built with React and Vite.
+
+- **REST API:** FastAPI-based backend with interactive API documentation.
+
+- **Database Integration:** SQLAlchemy and PostgreSQL-compatible database configuration.
+
+- **Extensible Architecture:** Dependencies are included for potential payment, MQTT, and machine-learning functionality; availability of these dependencies does not mean every integration is fully implemented.
+
+
+
+## System Architecture
 
 
 
@@ -88,15 +77,15 @@ The project combines a React frontend with a Python FastAPI backend and a databa
 
 flowchart TD
 
-&#x20;   A\[User] --> B\[React Frontend]
+&#x20;   A[User] --> B[React Frontend]
 
-&#x20;   B -->|HTTP requests| C\[FastAPI Backend]
+&#x20;   B -->|HTTP requests| C[FastAPI Backend]
 
-&#x20;   C --> D\[SQLAlchemy]
+&#x20;   C --> D[SQLAlchemy]
 
-&#x20;   D --> E\[(Database)]
+&#x20;   D --> E[(Database)]
 
-&#x20;   C --> F\[Parking Overview API]
+&#x20;   C --> F[Parking Overview API]
 
 &#x20;   F --> B
 
@@ -104,7 +93,7 @@ flowchart TD
 
 
 
-\## 🔄 Application Workflow
+## Application Workflow
 
 
 
@@ -112,21 +101,21 @@ flowchart TD
 
 flowchart TD
 
-&#x20;   A\[Open SpotSync] --> B\[Load Parking Overview]
+&#x20;   A[Open SpotSync] --> B[Load Parking Overview]
 
-&#x20;   B --> C\[Backend API Request]
+&#x20;   B --> C[Backend API Request]
 
-&#x20;   C --> D\[Retrieve Parking Data]
+&#x20;   C --> D[Retrieve Parking Data]
 
-&#x20;   D --> E\[Return JSON Response]
+&#x20;   D --> E[Return JSON Response]
 
-&#x20;   E --> F\[Display Availability]
+&#x20;   E --> F[Display Availability]
 
 ```
 
 
 
-\## 🛠️ Technology Stack
+## Technology Stack
 
 
 
@@ -156,7 +145,7 @@ flowchart TD
 
 
 
-\## 📂 Repository Structure
+## Repository Structure
 
 
 
@@ -164,53 +153,53 @@ flowchart TD
 
 SpotSync/
 
-├── backend/
+â”œâ”€â”€ backend/
 
-│   ├── app/
+â”‚   â”œâ”€â”€ app/
 
-│   ├── tests/
+â”‚   â”œâ”€â”€ tests/
 
-│   └── requirements.txt
+â”‚   â””â”€â”€ requirements.txt
 
-├── frontend/
+â”œâ”€â”€ frontend/
 
-│   ├── src/
+â”‚   â”œâ”€â”€ src/
 
-│   ├── public/
+â”‚   â”œâ”€â”€ public/
 
-│   └── package.json
+â”‚   â””â”€â”€ package.json
 
-├── docs/
+â”œâ”€â”€ docs/
 
-│   ├── api/
+â”‚   â”œâ”€â”€ api/
 
-│   ├── architecture/
+â”‚   â”œâ”€â”€ architecture/
 
-│   ├── database/
+â”‚   â”œâ”€â”€ database/
 
-│   ├── iot/
+â”‚   â”œâ”€â”€ iot/
 
-│   ├── ml/
+â”‚   â”œâ”€â”€ ml/
 
-│   ├── screenshots/
+â”‚   â”œâ”€â”€ screenshots/
 
-│   └── security/
+â”‚   â””â”€â”€ security/
 
-├── .env.example
+â”œâ”€â”€ .env.example
 
-├── .gitignore
+â”œâ”€â”€ .gitignore
 
-└── README.md
+â””â”€â”€ README.md
 
 ```
 
 
 
-\## 🚀 Getting Started
+## Getting Started
 
 
 
-\### Prerequisites
+### Prerequisites
 
 
 
@@ -218,17 +207,17 @@ Install the following tools:
 
 
 
-\- Git
+- Git
 
-\- Python
+- Python
 
-\- Node.js and npm
+- Node.js and npm
 
-\- A compatible database if your local configuration requires one
+- A compatible database if your local configuration requires one
 
 
 
-\### 1. Clone the Repository
+### 1. Clone the Repository
 
 
 
@@ -242,7 +231,7 @@ cd SpotSync
 
 
 
-\### 2. Configure the Backend
+### 2. Configure the Backend
 
 
 
@@ -250,7 +239,7 @@ From the repository root, create and activate a Python virtual environment.
 
 
 
-\*\*Windows PowerShell:\*\*
+**Windows PowerShell:**
 
 
 
@@ -258,9 +247,9 @@ From the repository root, create and activate a Python virtual environment.
 
 python -m venv .venv
 
-.\\.venv\\Scripts\\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 
-pip install -r .\\backend\\requirements.txt
+pip install -r .\backend\requirements.txt
 
 ```
 
@@ -270,7 +259,7 @@ Create your local environment configuration using `.env.example` as a reference.
 
 
 
-\### 3. Run the Backend
+### 3. Run the Backend
 
 
 
@@ -290,13 +279,13 @@ The local API should be available at:
 
 
 
-\- API: http://127.0.0.1:8000/
+- API: http://127.0.0.1:8000/
 
-\- Interactive documentation: http://127.0.0.1:8000/docs
+- Interactive documentation: http://127.0.0.1:8000/docs
 
 
 
-\### 4. Configure the Frontend
+### 4. Configure the Frontend
 
 
 
@@ -306,7 +295,7 @@ Open a second terminal at the repository root:
 
 ```powershell
 
-cd .\\frontend
+cd .\frontend
 
 npm install
 
@@ -326,7 +315,7 @@ VITE\_API\_URL=http://127.0.0.1:8000
 
 
 
-\### 5. Run the Frontend
+### 5. Run the Frontend
 
 
 
@@ -346,7 +335,7 @@ Open the local URL printed by Vite in your terminal.
 
 
 
-\## 📡 API Reference
+## API Reference
 
 
 
@@ -374,11 +363,11 @@ Refer to the interactive API documentation for the available parameters and resp
 
 
 
-\## 🧪 Testing
+## Testing
 
 
 
-\### Backend Tests
+### Backend Tests
 
 
 
@@ -388,7 +377,7 @@ From the repository root, with the project virtual environment configured:
 
 ```powershell
 
-.\\.venv-standard\\Scripts\\python.exe -m pytest .\\backend\\tests -q
+.\.venv-standard\Scripts\python.exe -m pytest .\backend\tests -q
 
 ```
 
@@ -398,7 +387,7 @@ If your local test setup uses a different virtual environment or test directory,
 
 
 
-\### Frontend Tests
+### Frontend Tests
 
 
 
@@ -414,7 +403,7 @@ npm test
 
 
 
-\### Frontend Production Build
+### Frontend Production Build
 
 
 
@@ -426,55 +415,55 @@ npm run build
 
 
 
-\## 🔐 Security Considerations
+## Security Considerations
 
 
 
-\- Keep API keys, database credentials, and JWT secrets in environment variables.
+- Keep API keys, database credentials, and JWT secrets in environment variables.
 
-\- Never commit `.env` files containing real secrets.
+- Never commit `.env` files containing real secrets.
 
-\- Use `.env.example` only for placeholder configuration.
+- Use `.env.example` only for placeholder configuration.
 
-\- Use test credentials when developing payment integrations.
+- Use test credentials when developing payment integrations.
 
-\- Review authentication, authorization, and input validation before production use.
-
-
-
-\## ⚠️ Current Limitations
+- Review authentication, authorization, and input validation before production use.
 
 
 
-\- The deployed parking overview contains demo parking data.
-
-\- Availability counts should not be interpreted as live sensor readings unless connected to and verified against real parking sensors.
-
-\- External payment, MQTT, and machine-learning dependencies do not by themselves confirm that those features are operational.
-
-\- Free hosting services may have cold starts or temporary delays.
+## Current Limitations
 
 
 
-\## 🗺️ Future Enhancements
+- The deployed parking overview contains demo parking data.
+
+- Availability counts should not be interpreted as live sensor readings unless connected to and verified against real parking sensors.
+
+- External payment, MQTT, and machine-learning dependencies do not by themselves confirm that those features are operational.
+
+- Free hosting services may have cold starts or temporary delays.
 
 
 
-\- Integrate real-time parking sensors.
-
-\- Add interactive parking maps and navigation.
-
-\- Improve booking and reservation workflows.
-
-\- Complete and validate payment integration.
-
-\- Expand automated testing and monitoring.
-
-\- Add screenshots and architecture documentation.
+## Future Enhancements
 
 
 
-\## 🤝 Contributing
+- Integrate real-time parking sensors.
+
+- Add interactive parking maps and navigation.
+
+- Improve booking and reservation workflows.
+
+- Complete and validate payment integration.
+
+- Expand automated testing and monitoring.
+
+- Add screenshots and architecture documentation.
+
+
+
+## Contributing
 
 
 
@@ -482,7 +471,7 @@ Contributions and suggestions are welcome. Create a branch for your changes, tes
 
 
 
-\## 📄 License
+## License
 
 
 
@@ -490,8 +479,8 @@ No license has been specified in this repository yet. Add a license file before 
 
 
 
-\## 📬 Contact
+## Contact
 
 
 
-For questions or suggestions, please open an issue in the \[SpotSync GitHub repository](https://github.com/Shivanshi388/SpotSync).
+For questions or suggestions, please open an issue in the [SpotSync GitHub repository](https://github.com/Shivanshi388/SpotSync).
