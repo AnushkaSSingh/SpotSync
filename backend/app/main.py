@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from app.api.router import api_router
 from app.api.routes import auth, bookings, parking, payments, analytics
 from app.api.routes.health import router as health_router
-from app.api.routes.temporary_seed import router as temporary_seed_router
 
 app = FastAPI(
     title="SpotSync API",
@@ -26,8 +25,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-app.include_router(temporary_seed_router)
 
 # Health-check endpoints
 app.include_router(health_router)
