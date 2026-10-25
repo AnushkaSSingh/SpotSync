@@ -1,191 +1,172 @@
 import { useEffect, useMemo, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import {
   Car,
-  ChevronDown,
   Clock3,
-  Filter,
   Heart,
-  LocateFixed,
-  Map,
   MapPin,
   Navigation,
   Search,
-  SlidersHorizontal,
   Star,
   Zap,
 } from 'lucide-react'
 import { getParkingOverview } from '../services/parkingService'
+import '../styles/explore-purple.css'
 
-function ParkingCard({ parking, saved, onSave, onNavigate }) {
-  const hasAvailability = parking.available > 0
+const FILTERS = ['All', 'Available', 'Full', 'EV Charging']
+// Temporary placeholder positions (approximate), used only when the backend sends none
+const FALLBACK_COORDS = {
+  'City Center Parking': [28.6692, 77.4538],
+  'Metro Plaza Parking': [28.6615, 77.4412],
+  'Tech Park Parking': [28.6848, 77.4330],
+}
 
+const pinIcon = L.divIcon({
+  className: '',
+  html: '<div class="ep-pin"><span>P</span></div>',
+  iconSize: [34, 34],
+  iconAnchor: [17, 34],
+})
+
+function toNumber(value) {
+  if (value == null || value === '') return null
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function ParkingCard({ parking, selected, saved, onSelect, onSave, onNavigate }) {
   return (
-    <article className="explore-parking-card">
-      <div className="explore-card-visual">
-        <div className="parking-visual-icon">
-          <Car size={24} />
-        </div>
-
-        <button
-          className={`save-parking ${saved ? 'saved' : ''}`}
-          onClick={() => onSave(parking.id)}
-          aria-label={saved ? 'Remove saved parking' : 'Save parking'}
-        >
-          <Heart size={18} fill={saved ? 'currentColor' : 'none'} />
-        </button>
-
-        <span className="parking-availability">
-          <span />
-          {hasAvailability ? 'Available' : 'Full'}
-        </span>
+    <article
+      className={`ep-card ${selected ? 'selected' : ''}`}
+      onClick={() => onSelect(parking.id)}
+    >
+      <div className="ep-thumb">
+        <Car size={26} />
       </div>
 
-      <div className="explore-card-body">
-        <div className="explore-card-title-row">
-          <div>
-            <h3>{parking.name}</h3>
-            <p className="parking-address">
-              <MapPin size={14} />
-              {parking.address || 'Location details unavailable'}
-            </p>
-          </div>
+      <div className="ep-card-main">
+        <div className="ep-card-top">
+          <h3>{parking.name}</h3>
 
-          {parking.rating != null && (
-            <div className="parking-rating">
-              <Star size={13} fill="currentColor" />
-              {parking.rating}
-            </div>
-          )}
+          <button
+            type="button"
+            className={`ep-save ${saved ? 'saved' : ''}`}
+            aria-label={saved ? 'Remove saved parking' : 'Save parking'}
+            onClick={(event) => {
+              event.stopPropagation()
+              onSave(parking.id)
+            }}
+          >
+            <Heart size={16} fill={saved ? 'currentColor' : 'none'} />
+          </button>
         </div>
 
-        <div className="parking-meta">
+        <p className="ep-address">
+          <MapPin size={13} />
+          {parking.address || 'Location details unavailable'}
+        </p>
+
+        <div className="ep-meta">
+          <span>
+            Total slots: <b>{parking.total}</b>
+          </span>
+          <span>
+            Available:{' '}
+            <b className={parking.available > 0 ? 'green' : 'red'}>
+              {parking.available}
+            </b>
+          </span>
           {parking.distance && (
             <span>
-              <Navigation size={14} />
-              {parking.distance}
+              <Navigation size={12} /> {parking.distance}
             </span>
           )}
-
           {parking.walking && (
             <span>
-              <Clock3 size={14} />
-              {parking.walking}
+              <Clock3 size={12} /> {parking.walking}
             </span>
           )}
-        </div>
-
-        <div className="parking-amenities">
-          {parking.ev && (
+          {parking.rating != null && (
             <span>
-              <Zap size={13} />
-              EV charging
+              <Star size={12} fill="currentColor" /> {parking.rating}
             </span>
           )}
-
-          {parking.covered && <span>Covered</span>}
-        </div>
-
-        <div className="explore-card-footer">
-          <div>
-            <strong>{parking.available}</strong>
-            <span> / {parking.total} spots available</span>
-          </div>
-
-          {parking.price != null && (
-            <div className="parking-price">
-              <strong>â‚¹{parking.price}</strong>
-              <span>/hr</span>
-            </div>
+          {parking.ev && (
+            <span className="ep-tag">
+              <Zap size={12} /> EV
+            </span>
           )}
+          {parking.covered && <span className="ep-tag">Covered</span>}
         </div>
 
-        <button
-          className="view-parking-button"
-          onClick={() =>
-            onNavigate?.(`/parking-details?parking=${parking.id}`)
-          }
-        >
-          View parking
-        </button>
+        <div className="ep-card-bottom">
+          <strong>{parking.price != null ? `₹${parking.price}/hour` : ' '}</strong>
+
+          <button
+            type="button"
+            className="ep-button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onNavigate?.(`/parking-details?parking=${parking.id}`)
+            }}
+          >
+            View Details
+          </button>
+        </div>
       </div>
     </article>
   )
 }
 
-function ParkingMap({ parking }) {
-  const selectedParking = parking[0]
+function MapPanel({ lots, selected, onSelect }) {
+  const withCoords = lots.filter((lot) => lot.lat != null && lot.lng != null)
+
+  if (withCoords.length === 0) {
+    return (
+      <div className="ep-map-empty">
+        <MapPin size={34} />
+        <h3>Map locations not available yet</h3>
+        <p>
+          Your parking data has no latitude and longitude, so pins can't be
+          placed on the map yet.
+        </p>
+      </div>
+    )
+  }
+
+  const center = selected?.lat != null
+    ? [selected.lat, selected.lng]
+    : [withCoords[0].lat, withCoords[0].lng]
 
   return (
-    <div className="explore-map">
-      <div className="map-top-controls">
-        <button
-          className="map-control"
-          type="button"
-          onClick={() => {
-            if ('geolocation' in navigator) {
-              navigator.geolocation.getCurrentPosition(
-                () => {},
-                () => {},
-              )
-            }
-          }}
+    <MapContainer
+      center={center}
+      zoom={13}
+      className="ep-map"
+      key={selected?.id ?? 'map'}
+    >
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="© OpenStreetMap"
+      />
+
+      {withCoords.map((lot) => (
+        <Marker
+          key={lot.id}
+          position={[lot.lat, lot.lng]}
+          icon={pinIcon}
+          eventHandlers={{ click: () => onSelect(lot.id) }}
         >
-          <LocateFixed size={17} />
-          <span>Locate me</span>
-        </button>
-
-        <button className="map-control" type="button">
-          <Map size={17} />
-          Map view
-        </button>
-      </div>
-
-      <div className="map-road road-a" />
-      <div className="map-road road-b" />
-      <div className="map-road road-c" />
-      <div className="map-road road-d" />
-
-      {parking.map((item, index) => (
-        <button
-          className={`explore-map-pin pin-${(index % 4) + 1}`}
-          key={item.id}
-          title={item.name}
-          type="button"
-          aria-label={`${item.name}: ${item.available} available spots`}
-        >
-          <MapPin size={20} fill="currentColor" />
-          <span>{item.available}</span>
-        </button>
+          <Popup>
+            <b>{lot.name}</b>
+            <br />
+            {lot.available} of {lot.total} spots available
+          </Popup>
+        </Marker>
       ))}
-
-      {selectedParking ? (
-        <div className="map-selected-card">
-          <div className="selected-card-icon">
-            <Car size={19} />
-          </div>
-
-          <div>
-            <strong>{selectedParking.name}</strong>
-            <span>
-              {selectedParking.available} of {selectedParking.total} spots
-              available
-            </span>
-          </div>
-
-          <ChevronDown size={17} />
-        </div>
-      ) : (
-        <div className="map-selected-card">
-          <div className="selected-card-icon">
-            <Car size={19} />
-          </div>
-          <div>
-            <strong>No parking locations</strong>
-            <span>Locations will appear here when available.</span>
-          </div>
-        </div>
-      )}
-    </div>
+    </MapContainer>
   )
 }
 
@@ -194,9 +175,9 @@ export default function ExploreParking({ onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('availability')
-  const [showFilters, setShowFilters] = useState(false)
+  const [filter, setFilter] = useState('All')
   const [saved, setSaved] = useState([])
+  const [selectedId, setSelectedId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -206,42 +187,51 @@ export default function ExploreParking({ onNavigate }) {
         setLoading(true)
         setError('')
 
-        
         const response = await getParkingOverview()
-
-
         const lots = response?.parking_lots ?? []
 
-
-        const mappedLots = lots.map((lot) => ({
+                const mapped = lots.map((lot) => ({
           id: lot.id,
           name: lot.name || `Parking location ${lot.id}`,
           address: lot.address || '',
           available: Number(lot.available_slots ?? 0),
           total: Number(lot.total_slots ?? 0),
-          occupancyRate: Number(lot.occupancy_rate ?? 0),
           price: lot.price ?? null,
           rating: lot.rating ?? null,
           distance: lot.distance ?? '',
           walking: lot.walking ?? '',
           ev: Boolean(lot.ev_charging),
           covered: Boolean(lot.covered),
+          lat:
+            toNumber(lot.latitude ?? lot.lat) ??
+            FALLBACK_COORDS[lot.name]?.[0] ??
+            null,
+          lng:
+            toNumber(lot.longitude ?? lot.lng ?? lot.lon) ??
+            FALLBACK_COORDS[lot.name]?.[1] ??
+            null,
         }))
 
-        if (!cancelled) {
-          setParkingData(mappedLots)
+        if (cancelled) return
+
+        setParkingData(mapped)
+
+        const wanted = new URLSearchParams(window.location.search).get('parking')
+        if (wanted) {
+          const match = mapped.find(
+            (lot) => lot.name === wanted || String(lot.id) === wanted
+          )
+          if (match) setSelectedId(match.id)
         }
       } catch (err) {
         if (!cancelled) {
           setError(
             err.message ||
-              'Could not load parking locations. Check that the backend is running.',
+              'Could not load parking locations. Check that the backend is running.'
           )
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
+        if (!cancelled) setLoading(false)
       }
     }
 
@@ -252,203 +242,101 @@ export default function ExploreParking({ onNavigate }) {
     }
   }, [])
 
-  const filteredParking = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
+  const filtered = useMemo(() => {
+    const text = query.trim().toLowerCase()
 
-    let results = parkingData.filter((parking) => {
-      if (!normalizedQuery) return true
+    return parkingData
+      .filter((lot) => {
+        if (text) {
+          const hit =
+            lot.name.toLowerCase().includes(text) ||
+            lot.address.toLowerCase().includes(text)
+          if (!hit) return false
+        }
+        if (filter === 'Available') return lot.available > 0
+        if (filter === 'Full') return lot.available === 0
+        if (filter === 'EV Charging') return lot.ev
+        return true
+      })
+      .sort((a, b) => b.available - a.available)
+  }, [parkingData, query, filter])
 
-      return (
-        parking.name.toLowerCase().includes(normalizedQuery) ||
-        parking.address.toLowerCase().includes(normalizedQuery)
-      )
-    })
-
-    if (sort === 'availability') {
-      results = [...results].sort(
-        (a, b) => b.available - a.available,
-      )
-    }
-
-    return results
-  }, [parkingData, query, sort])
+  const selected = filtered.find((lot) => lot.id === selectedId) ?? filtered[0]
 
   function toggleSaved(id) {
     setSaved((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
     )
   }
 
-  function resetFilters() {
-    setQuery('')
-    setSort('availability')
-  }
-
   return (
-    <main className="explore-page">
-      <section className="explore-header">
-        <div className="container">
-          <div className="explore-breadcrumb">
-            <span>Home</span>
-            <span>/</span>
-            <strong>Find Parking</strong>
-          </div>
-
-          <div className="explore-heading">
-            <div>
-              <span className="section-kicker">FIND YOUR SPOT</span>
-              <h1>Parking near you</h1>
-              <p>
-                Discover available parking spaces in real time and reserve
-                your spot before you arrive.
-              </p>
-            </div>
-
-            <button
-              className="mobile-filter-button"
-              onClick={() => setShowFilters(!showFilters)}
-              type="button"
-            >
-              <SlidersHorizontal size={17} />
-              Filters
-            </button>
-          </div>
-
-          <div className="explore-search">
-            <Search size={20} />
-
+    <main className="ep-page">
+      <section className="ep-layout">
+        <aside className="ep-list">
+          <div className="ep-search">
+            <Search size={17} />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by location, parking name..."
+              placeholder="Search by location or parking name"
               aria-label="Search parking"
             />
-
-            <button type="button">Search</button>
           </div>
-        </div>
-      </section>
 
-      <section className="explore-content">
-        <div className="container explore-layout">
-          <aside
-            className={`explore-filters ${showFilters ? 'open' : ''}`}
-          >
-            <div className="filters-heading">
-              <div>
-                <Filter size={18} />
-                <strong>Filters</strong>
-              </div>
+          <div className="ep-pills">
+            {FILTERS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                className={filter === name ? 'active' : ''}
+                onClick={() => setFilter(name)}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
 
-              <button type="button" onClick={resetFilters}>
-                Reset
+          <p className="ep-count">
+            {loading ? 'Loading...' : `${filtered.length} parking locations`}
+          </p>
+
+          {loading && <p className="ep-note">Loading parking locations from the server...</p>}
+
+          {!loading && error && (
+            <div className="ep-note" role="alert">
+              <strong>Could not load parking</strong>
+              <p>{error}</p>
+              <button type="button" className="ep-button" onClick={() => window.location.reload()}>
+                Try again
               </button>
             </div>
+          )}
 
-            <div className="filter-group">
-              <h4>Distance</h4>
-              <p>Distance data is not available yet.</p>
-            </div>
+          {!loading && !error && filtered.length === 0 && (
+            <p className="ep-note">
+              {parkingData.length === 0
+                ? 'No parking locations available.'
+                : 'No parking found. Try a different search or filter.'}
+            </p>
+          )}
 
-            <div className="filter-group">
-              <h4>Price per hour</h4>
-              <p>Pricing data is not available yet.</p>
-            </div>
+          {!loading &&
+            !error &&
+            filtered.map((lot) => (
+              <ParkingCard
+                key={lot.id}
+                parking={lot}
+                selected={selected?.id === lot.id}
+                saved={saved.includes(lot.id)}
+                onSelect={setSelectedId}
+                onSave={toggleSaved}
+                onNavigate={onNavigate}
+              />
+            ))}
+        </aside>
 
-            <div className="filter-group">
-              <h4>Amenities</h4>
-              <p>Amenity data is not available yet.</p>
-            </div>
-          </aside>
-
-          <div className="explore-results">
-            <div className="results-toolbar">
-              <div>
-                <strong>
-                  {loading ? 'Loading...' : filteredParking.length}
-                  {!loading && ' parking locations'}
-                </strong>
-                <span> from SpotSync</span>
-              </div>
-
-              <label className="sort-select">
-                <span>Sort by</span>
-
-                <select
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value)}
-                >
-                  <option value="availability">Availability</option>
-                  <option value="distance" disabled>
-                    Distance (not available)
-                  </option>
-                  <option value="price" disabled>
-                    Price (not available)
-                  </option>
-                </select>
-
-                <ChevronDown size={15} />
-              </label>
-            </div>
-
-            {loading && (
-              <div className="empty-parking-state">
-                <p>Loading parking locations from the server...</p>
-              </div>
-            )}
-
-            {!loading && error && (
-              <div className="empty-parking-state" role="alert">
-                <h3>Could not load parking</h3>
-                <p>{error}</p>
-                <button
-                  className="view-parking-button"
-                  type="button"
-                  onClick={() => window.location.reload()}
-                >
-                  Try again
-                </button>
-              </div>
-            )}
-
-            {!loading && !error && (
-              <>
-                <div className="explore-results-grid">
-                  {filteredParking.map((parking) => (
-                    <ParkingCard
-                      key={parking.id}
-                      parking={parking}
-                      saved={saved.includes(parking.id)}
-                      onSave={toggleSaved}
-                      onNavigate={onNavigate}
-                    />
-                  ))}
-                </div>
-
-                {filteredParking.length === 0 && (
-                  <div className="empty-parking-state">
-                    <Search size={32} />
-                    <h3>
-                      {parkingData.length === 0
-                        ? 'No parking locations available'
-                        : 'No parking found'}
-                    </h3>
-                    <p>
-                      {parkingData.length === 0
-                        ? 'Add parking locations in the backend to display them here.'
-                        : 'Try searching for a different parking name.'}
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          <div className="explore-map-column">
-            <ParkingMap parking={filteredParking} />
-          </div>
+        <div className="ep-map-column">
+          <MapPanel lots={filtered} selected={selected} onSelect={setSelectedId} />
         </div>
       </section>
     </main>
