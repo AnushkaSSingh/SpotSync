@@ -58,8 +58,6 @@ export default function Login() {
         console.error('Could not load user profile:', profileError)
       }
 
-      alert('Logged in successfully!')
-
       window.history.pushState({}, '', '/home')
       window.dispatchEvent(new PopStateEvent('popstate'))
     } catch (err) {
