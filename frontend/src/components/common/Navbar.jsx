@@ -131,7 +131,16 @@ function Navbar() {
           >
             Home
           </button>
-
+                    {isLoggedIn && (
+            <button
+              type="button"
+              className={path === '/bookings' ? 'active' : ''}
+              onClick={() => handleNavigation('/bookings')}
+            >
+              My Bookings
+            </button>
+          )}
+          
           <button
             type="button"
             className={path === '/parking' ? 'active' : ''}

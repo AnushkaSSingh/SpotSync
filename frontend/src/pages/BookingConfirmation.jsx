@@ -1,9 +1,7 @@
-﻿import { useMemo } from 'react'
+﻿import { useEffect, useMemo } from 'react'
 import { CheckCircle2 } from 'lucide-react'
+import { saveBooking } from '../utils/bookingStore'
 import '../styles/confirmation-purple.css'
-
-// Set to true once the My Bookings page (image 7) exists and has a route.
-const BOOKINGS_READY = false
 
 function hourText(hour) {
   const suffix = hour >= 12 ? 'PM' : 'AM'
@@ -26,12 +24,38 @@ export default function BookingConfirmation() {
   const date = params.get('date')
   const time = params.get('time')
   const duration = Number(params.get('duration')) || null
+  const method = params.get('method') || ''
 
-  // Display reference only. It is not saved anywhere yet.
   const reference = useMemo(
     () => params.get('booking') || `SS${Date.now().toString().slice(-6)}`,
     [params]
   )
+
+  useEffect(() => {
+    // Put the ID in the URL so a refresh does not create a second booking.
+    const url = new URL(window.location.href)
+    if (!url.searchParams.get('booking')) {
+      url.searchParams.set('booking', reference)
+      window.history.replaceState({}, '', url)
+    }
+
+    const startsAt =
+      date && time ? new Date(`${date}T${time}:00`).getTime() : Date.now()
+    const endsAt = startsAt + (duration || 1) * 60 * 60 * 1000
+
+    saveBooking({
+      id: reference,
+      parking: parkingName,
+      slot,
+      total,
+      duration,
+      method,
+      startsAt,
+      endsAt,
+      createdAt: Date.now(),
+      cancelled: false,
+    })
+  }, [])
 
   const dateText = date
     ? new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', {
@@ -95,17 +119,11 @@ export default function BookingConfirmation() {
           </div>
 
           <div className="cf-actions">
-            {BOOKINGS_READY && (
-              <button type="button" className="cf-primary" onClick={() => go('/bookings')}>
-                View My Bookings
-              </button>
-            )}
+            <button type="button" className="cf-primary" onClick={() => go('/bookings')}>
+              View My Bookings
+            </button>
 
-            <button
-              type="button"
-              className={BOOKINGS_READY ? 'cf-outline' : 'cf-primary'}
-              onClick={() => go('/home')}
-            >
+            <button type="button" className="cf-outline" onClick={() => go('/home')}>
               Go to Home
             </button>
           </div>
