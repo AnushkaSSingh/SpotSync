@@ -1,142 +1,182 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ArrowLeft,
   Car,
   CheckCircle2,
   CreditCard,
+  Landmark,
+  Lock,
   MapPin,
   ShieldCheck,
+  Smartphone,
+  Wallet,
 } from 'lucide-react'
+import '../styles/payment-purple.css'
 
-const parking = {
-  name: 'City Center Parking',
-  address: 'MG Road, City Center',
-  price: 30,
+const METHODS = [
+  { id: 'upi', label: 'UPI', hint: 'Pay with any UPI app', icon: Smartphone },
+  { id: 'card', label: 'Credit / Debit Card', hint: 'Visa, Mastercard, RuPay', icon: CreditCard },
+  { id: 'wallet', label: 'Wallet', hint: 'Paytm, PhonePe and more', icon: Wallet },
+  { id: 'razorpay', label: 'Razorpay', hint: 'Cards, netbanking, UPI', icon: Landmark },
+]
+
+function hourText(hour) {
+  const suffix = hour >= 12 ? 'PM' : 'AM'
+  const twelve = hour % 12 || 12
+  return `${String(twelve).padStart(2, '0')}:00 ${suffix}`
 }
 
 export default function Payment() {
-  const params = useMemo(
-    () => new URLSearchParams(window.location.search),
-    [],
-  )
+  const params = useMemo(() => new URLSearchParams(window.location.search), [])
 
+  const parkingName = params.get('parking') || 'City Center Parking'
   const slot = params.get('slot') || 'A01'
   const total = Number(params.get('total')) || 70
+  const date = params.get('date')
+  const time = params.get('time')
+  const duration = Number(params.get('duration')) || null
 
-  const parkingFee = total - 10
   const serviceFee = 10
+  const parkingFee = total - serviceFee
+
+  const [method, setMethod] = useState('upi')
+
+  const dateText = date
+    ? new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : null
+
+  let timeText = null
+  if (time) {
+    const start = Number(time.split(':')[0])
+    timeText =
+      duration === 24
+        ? `${hourText(start)} · 24 hours`
+        : duration
+          ? `${hourText(start)} – ${hourText((start + duration) % 24)}`
+          : hourText(start)
+  }
+
+  const durationText = duration === 24 ? 'Full day' : duration ? `${duration} hours` : null
 
   function goBack() {
     window.history.back()
   }
 
   function confirmPayment() {
-    window.history.pushState(
-      { slot, total },
-      '',
-      `/booking-confirmation?parking=${encodeURIComponent(parking.name)}&slot=${slot}&total=${total}`,
-    )
+    const query = new URLSearchParams({
+      parking: parkingName,
+      slot,
+      total: String(total),
+      method,
+    })
+    if (date) query.set('date', date)
+    if (time) query.set('time', time)
+    if (duration) query.set('duration', String(duration))
 
+    window.history.pushState({ slot, total }, '', `/booking-confirmation?${query}`)
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 
   return (
-    <main className="payment-page">
+    <main className="pay-page">
       <div className="container">
         <button type="button" className="back-link" onClick={goBack}>
           <ArrowLeft size={17} />
           Back to booking
         </button>
 
-        <div className="payment-heading">
-          <span className="section-kicker">SECURE CHECKOUT</span>
-          <h1>Complete your payment</h1>
-          <p>Review your booking and choose a payment method.</p>
-        </div>
+        <div className="pay-grid">
+          <aside className="pay-card">
+            <h2>Payment Summary</h2>
 
-        <section className="payment-layout">
-          <div className="payment-main">
-            <article className="payment-section-card">
-              <div className="payment-location-icon">
-                <Car size={24} />
+            <div className="pay-lot">
+              <div className="pay-thumb">
+                <Car size={22} />
               </div>
-
               <div>
-                <span className="section-kicker">PARKING LOCATION</span>
-                <h2>{parking.name}</h2>
-                <p className="payment-address">
-                  <MapPin size={16} />
-                  {parking.address}
-                </p>
-              </div>
-            </article>
-
-            <article className="payment-section-card">
-              <div className="payment-card-heading">
-                <div>
-                  <span className="section-kicker">PAYMENT METHOD</span>
-                  <h2>Choose how to pay</h2>
-                </div>
-              </div>
-
-              <button type="button" className="payment-method selected">
-                <CreditCard size={20} />
-                <span>
-                  <strong>Card payment</strong>
-                  <small>Credit or debit card</small>
+                <strong>{parkingName}</strong>
+                <span className="pay-muted">
+                  <MapPin size={12} /> Slot {slot}
                 </span>
-                <CheckCircle2 size={19} />
-              </button>
-
-              <div className="payment-demo-note">
-                <ShieldCheck size={18} />
-                <span>This is a frontend demo. No real payment will be charged.</span>
               </div>
-            </article>
-          </div>
-
-          <aside className="payment-summary-card">
-            <span className="section-kicker">BOOKING SUMMARY</span>
-            <h2>Payment details</h2>
-
-            <div className="payment-summary-row">
-              <span>Parking slot</span>
-              <strong>{slot}</strong>
             </div>
 
-            <div className="payment-summary-row">
+            {dateText && (
+              <div className="pay-row">
+                <span>Booking time</span>
+                <strong>
+                  {dateText}
+                  {timeText && `, ${timeText}`}
+                </strong>
+              </div>
+            )}
+
+            {durationText && (
+              <div className="pay-row">
+                <span>Duration</span>
+                <strong>{durationText}</strong>
+              </div>
+            )}
+
+            <div className="pay-row">
               <span>Parking fee</span>
               <strong>&#8377;{parkingFee}</strong>
             </div>
 
-            <div className="payment-summary-row">
+            <div className="pay-row">
               <span>Service fee</span>
               <strong>&#8377;{serviceFee}</strong>
             </div>
 
-            <div className="price-divider" />
-
-            <div className="payment-total">
-              <span>Total</span>
+            <div className="pay-total">
+              <span>Amount</span>
               <strong>&#8377;{total}</strong>
             </div>
+          </aside>
 
-            <button
-              type="button"
-              className="reserve-button"
-              onClick={confirmPayment}
-            >
-              Confirm & Pay
+          <section className="pay-card">
+            <h2>Choose Payment Method</h2>
+
+            <div className="pay-methods" role="radiogroup" aria-label="Payment method">
+              {METHODS.map(({ id, label, hint, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={method === id}
+                  className={`pay-method ${method === id ? 'selected' : ''}`}
+                  onClick={() => setMethod(id)}
+                >
+                  <span className="pay-radio" />
+                  <span className="pay-method-text">
+                    <strong>{label}</strong>
+                    <small>{hint}</small>
+                  </span>
+                  <Icon size={22} />
+                  {method === id && <CheckCircle2 size={18} className="pay-tick" />}
+                </button>
+              ))}
+            </div>
+
+            <button type="button" className="pay-now" onClick={confirmPayment}>
+              Pay Now &#8377;{total}
             </button>
 
-            <p className="secure-note">
-              Your booking information is kept secure.
+            <p className="pay-secure">
+              <Lock size={13} /> Secure payment
             </p>
-          </aside>
-        </section>
+
+            <div className="pay-demo">
+              <ShieldCheck size={17} />
+              <span>This is a frontend demo. No real payment will be charged.</span>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   )
 }
-
-
