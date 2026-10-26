@@ -10,7 +10,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Help from './pages/Help'
 import AdminDashboard from './pages/AdminDashboard'
-import ParkingMap from "./pages/ParkingMap";
+
 
 function App() {
   function navigate(path) {
@@ -59,8 +59,6 @@ function App() {
     page = <Payment />
   } else if (path === '/booking-confirmation') {
     page = <BookingConfirmation />
-  } else if (path === '/parking-map') {
-    page = <ParkingMap />
   } else if (path === '/login') {
     page = <Login />
   } else if (path === '/register') {
