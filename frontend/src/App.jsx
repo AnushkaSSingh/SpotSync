@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Help from './pages/Help'
 import AdminDashboard from './pages/AdminDashboard'
+import MyBookings from './pages/MyBookings'
 
 function App() {
   function navigate(path) {
@@ -40,6 +41,8 @@ function App() {
     '/booking',
     '/payment',
     '/booking-confirmation',
+    '/bookings',
+    '/booking-confirmation',
   ]
 
   let page = <Login />
@@ -58,6 +61,8 @@ function App() {
     page = <Payment />
   } else if (path === '/booking-confirmation') {
     page = <BookingConfirmation />
+  } else if (path === '/bookings') {
+    page = <MyBookings />
   } else if (path === '/login') {
     page = <Login />
   } else if (path === '/register') {

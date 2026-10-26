@@ -1,4 +1,5 @@
-﻿import { Car, Menu, X, UserRound } from 'lucide-react'
+﻿import { MapPin, Menu, X, UserRound } from 'lucide-react'
+
 import { useEffect, useState } from 'react'
 
 function navigate(path) {
@@ -115,7 +116,7 @@ function Navbar() {
           aria-label="SpotSync home"
         >
           <span className="brand-mark">
-            <Car size={20} />
+            <MapPin size={20} fill="currentColor" />
           </span>
           <span>
             Spot<span>Sync</span>
@@ -130,7 +131,16 @@ function Navbar() {
           >
             Home
           </button>
-
+                    {isLoggedIn && (
+            <button
+              type="button"
+              className={path === '/bookings' ? 'active' : ''}
+              onClick={() => handleNavigation('/bookings')}
+            >
+              My Bookings
+            </button>
+          )}
+          
           <button
             type="button"
             className={path === '/parking' ? 'active' : ''}
