@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
+from app.mqtt.message_handler import process_sensor_payload
 from app.schemas.sensor import (
     SensorEventRequest,
     SensorEventResponse,
 )
-from app.services.sensor_service import sensor_service
 
 
 router = APIRouter(
@@ -23,18 +23,18 @@ def process_sensor_event(
     request: SensorEventRequest,
     db: Session = Depends(get_db),
 ):
-    event = sensor_service.process_event(
+    event = process_sensor_payload(
         db=db,
-        sensor_id=request.sensor_id,
-        event_type=request.event_type,
-        value=request.value,
-        payload=request.payload,
+        data=request.model_dump(),
     )
 
     if event is None:
         raise HTTPException(
-            status_code=404,
-            detail="Sensor not found",
+            status_code=422,
+            detail=(
+                "Sensor event rejected. Check that the sensor is registered, "
+                "assigned to the claimed slot, and sending a supported event."
+            ),
         )
 
     return {

@@ -10,17 +10,30 @@ def create_incident(
     incident_type: str,
     severity: str,
     description: str,
+    sensor_id: int | None = None,
 ):
+    if sensor_id is not None:
+        existing = db.scalar(
+            select(Incident).where(
+                Incident.sensor_id == sensor_id,
+                Incident.incident_type == incident_type,
+                Incident.status == "open",
+            )
+        )
+
+        if existing is not None:
+            return existing
+
     incident = Incident(
         parking_lot_id=parking_lot_id,
+        sensor_id=sensor_id,
         incident_type=incident_type,
         severity=severity,
         description=description,
     )
 
     db.add(incident)
-    db.commit()
-    db.refresh(incident)
+    db.flush()
 
     return incident
 

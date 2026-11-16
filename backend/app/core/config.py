@@ -20,9 +20,13 @@ class Settings(BaseSettings):
     # ALLOW_MOCK_PAYMENTS=true. Keep the opt-in false by default.
     app_env: str = "production"
     allow_mock_payments: bool = False
+    mqtt_enabled: bool = False
     mqtt_broker: str = "localhost"
     mqtt_port: int = 1883
     mqtt_client_id: str = "spotsync-backend"
+    sensor_stale_after_seconds: int = 120
+    sensor_max_future_skew_seconds: int = 30
+    sensor_health_check_interval_seconds: int = 30
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

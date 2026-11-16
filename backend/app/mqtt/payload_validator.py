@@ -1,11 +1,13 @@
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SensorPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    sensor_id: str
-    slot_id: str
-    status: str
+    sensor_id: str = Field(min_length=1, max_length=100)
+    slot_id: str = Field(min_length=1, max_length=100)
+    status: str = Field(min_length=1, max_length=100)
     distance_cm: float
-    timestamp: str
+    timestamp: datetime

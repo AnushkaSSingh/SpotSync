@@ -8,13 +8,13 @@ from app.repositories.incident_repository import (
 
 
 class IncidentService:
-
     def detect_sensor_incident(
         self,
         db: Session,
         parking_lot_id: int,
         event_type: str,
-        value: float | None = None,
+        value=None,
+        sensor_id: int | None = None,
     ):
         incident_type = None
         severity = "low"
@@ -49,6 +49,7 @@ class IncidentService:
             incident_type=incident_type,
             severity=severity,
             description=description,
+            sensor_id=sensor_id,
         )
 
     def get_open(
@@ -56,20 +57,14 @@ class IncidentService:
         db: Session,
         parking_lot_id: int | None = None,
     ):
-        return get_open_incidents(
-            db=db,
-            parking_lot_id=parking_lot_id,
-        )
+        return get_open_incidents(db, parking_lot_id)
 
     def resolve(
         self,
         db: Session,
         incident_id: int,
     ):
-        return resolve_incident(
-            db=db,
-            incident_id=incident_id,
-        )
+        return resolve_incident(db, incident_id)
 
 
 incident_service = IncidentService()

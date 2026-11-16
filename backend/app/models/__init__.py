@@ -5,6 +5,9 @@ from app.models.parking_slot import ParkingSlot
 from app.models.booking import Booking
 from app.models.payment import Payment
 from app.models.refund import Refund
+from app.models.sensor import Sensor
+from app.models.sensor_event import SensorEvent
+from app.models.incident import Incident
 
 __all__ = [
     "User",
@@ -14,4 +17,7 @@ __all__ = [
     "Booking",
     "Payment",
     "Refund",
+    "Sensor",
+    "SensorEvent",
+    "Incident",
 ]
