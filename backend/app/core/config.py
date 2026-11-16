@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # ALLOW_MOCK_PAYMENTS=true. Keep the opt-in false by default.
     app_env: str = "production"
     allow_mock_payments: bool = False
+    mqtt_enabled: bool = False
     mqtt_broker: str = "localhost"
     mqtt_port: int = 1883
     mqtt_client_id: str = "spotsync-backend"

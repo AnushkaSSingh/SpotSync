@@ -8,10 +8,5 @@ def create_mqtt_client() -> mqtt.Client:
         mqtt.CallbackAPIVersion.VERSION2,
         client_id=settings.mqtt_client_id,
     )
-
-    client.connect(
-        settings.mqtt_broker,
-        settings.mqtt_port,
-    )
-
+    client.reconnect_delay_set(min_delay=1, max_delay=30)
     return client

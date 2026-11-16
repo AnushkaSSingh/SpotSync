@@ -9,30 +9,6 @@ from app.models.sensor_event import SensorEvent
 from app.services.incident_service import incident_service
 
 
-def update_slot_from_sensor(
-    db: Session,
-    slot_id: str,
-    status: str,
-) -> bool:
-    slot = db.scalar(
-        select(ParkingSlot).where(
-            ParkingSlot.slot_number == slot_id
-        )
-    )
-
-    if not slot:
-        return False
-
-    if status not in {"occupied", "available"}:
-        return False
-
-    slot.is_available = status == "available"
-
-    db.commit()
-
-    return True
-
-
 class SensorService:
 
     def process_event(
@@ -59,17 +35,39 @@ class SensorService:
         )
 
         db.add(event)
-
         sensor.last_seen_at = now
         sensor.is_online = True
-
         db.flush()
 
-        parking_lot_id = getattr(
-            sensor,
-            "parking_lot_id",
-            None,
-        )
+        # Only the slot assigned to this sensor can be updated.
+        slot = None
+        if sensor.parking_slot_id is not None:
+            slot = db.get(ParkingSlot, sensor.parking_slot_id)
+
+        # Require three consecutive matching occupancy readings.
+        if slot is not None and event_type in {"occupied", "available"}:
+            recent_events = db.scalars(
+                select(SensorEvent.event_type)
+                .where(SensorEvent.sensor_id == sensor_id)
+                .order_by(
+                    SensorEvent.created_at.desc(),
+                    SensorEvent.id.desc(),
+                )
+                .limit(3)
+            ).all()
+
+            if len(recent_events) == 3 and all(
+                reading == event_type for reading in recent_events
+            ):
+                if event_type == "occupied":
+                    slot.status = "OCCUPIED"
+                    slot.is_available = False
+
+                elif slot.status not in {"RESERVED", "OUT_OF_SERVICE"}:
+                    slot.status = "AVAILABLE"
+                    slot.is_available = True
+
+        parking_lot_id = sensor.parking_lot_id
 
         if parking_lot_id is not None:
             incident_service.detect_sensor_incident(

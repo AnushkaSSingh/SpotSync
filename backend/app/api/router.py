@@ -8,6 +8,7 @@ from app.api.routes import (
     payments,
     predictions,
     recommendations,
+    sensors,
     vehicles,
 )
 
@@ -20,3 +21,5 @@ api_router.include_router(vehicles.router)
 api_router.include_router(predictions.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(analytics.router)
+
+api_router.include_router(sensors.router)

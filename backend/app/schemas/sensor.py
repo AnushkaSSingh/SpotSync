@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SensorEventRequest(BaseModel):
-    sensor_id: int = Field(..., gt=0)
-    event_type: str = Field(..., min_length=1, max_length=100)
-    value: float | None = None
-    payload: dict = {}
+    model_config = ConfigDict(extra="forbid")
+
+    sensor_id: str = Field(..., min_length=1, max_length=100)
+    slot_id: str = Field(..., min_length=1, max_length=100)
+    status: str = Field(..., min_length=1, max_length=100)
+    distance_cm: float
+    timestamp: str = Field(..., min_length=1)
 
 
 class SensorEventResponse(BaseModel):

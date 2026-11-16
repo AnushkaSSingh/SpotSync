@@ -1,8 +1,10 @@
-﻿import os
+import os
 
 from fastapi import FastAPI
 
 from app.api.router import api_router
+from app.core.config import settings
+from app.mqtt.subscriber import start_mqtt_subscriber, stop_mqtt_subscriber
 from app.api.routes import auth, bookings, parking, payments, analytics
 from app.api.routes.health import router as health_router
 
@@ -44,3 +46,14 @@ app.include_router(analytics.router)
 def root():
     return {"message": "SpotSync API is running"}
 
+
+
+@app.on_event("startup")
+def start_optional_mqtt():
+    if settings.mqtt_enabled:
+        start_mqtt_subscriber()
+
+
+@app.on_event("shutdown")
+def stop_optional_mqtt():
+    stop_mqtt_subscriber()

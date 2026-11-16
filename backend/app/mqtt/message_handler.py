@@ -1,42 +1,80 @@
 import json
 
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.parking_slot import ParkingSlot
+from app.models.sensor import Sensor
 from app.mqtt.payload_validator import SensorPayload
-from app.services.sensor_service import sensor_service, update_slot_from_sensor
+from app.services.sensor_service import sensor_service
 
 
-def handle_sensor_message(
-    db: Session,
-    payload: bytes,
-) -> bool:
+ALLOWED_SENSOR_EVENTS = {
+    "occupied",
+    "available",
+    "fault",
+    "blocked",
+    "sensor_offline",
+    "unexpected_occupancy",
+}
+
+
+def process_sensor_payload(db: Session, data: dict):
+    """Validate a sensor report and process it only for its registered slot."""
     try:
-        data = json.loads(payload.decode("utf-8"))
         sensor_payload = SensorPayload.model_validate(data)
-    except (json.JSONDecodeError, UnicodeDecodeError, ValidationError):
-        return False
+    except ValidationError:
+        return None
 
-    slot_updated = update_slot_from_sensor(
-        db=db,
-        slot_id=sensor_payload.slot_id,
-        status=sensor_payload.status,
+    sensor_code = sensor_payload.sensor_id.strip()
+    claimed_slot = sensor_payload.slot_id.strip()
+    event_type = sensor_payload.status.strip().lower()
+
+    if not sensor_code or not claimed_slot:
+        return None
+
+    if event_type not in ALLOWED_SENSOR_EVENTS:
+        return None
+
+    sensor = db.scalar(
+        select(Sensor).where(Sensor.sensor_code == sensor_code)
     )
 
-    if not slot_updated:
-        return False
+    if sensor is None or sensor.parking_slot_id is None:
+        return None
 
-    sensor_id = 1 if sensor_payload.sensor_id == "SENSOR_001" else None
+    assigned_slot = db.get(ParkingSlot, sensor.parking_slot_id)
 
-    if sensor_id is None:
-        return False
+    if assigned_slot is None:
+        return None
 
-    event = sensor_service.process_event(
+    valid_slot_codes = {
+        code
+        for code in (assigned_slot.slot_number, assigned_slot.display_code)
+        if code
+    }
+
+    if claimed_slot not in valid_slot_codes:
+        return None
+
+    return sensor_service.process_event(
         db=db,
-        sensor_id=sensor_id,
-        event_type=sensor_payload.status,
+        sensor_id=sensor.id,
+        event_type=event_type,
         value=sensor_payload.distance_cm,
         payload=data,
     )
 
-    return event is not None
+
+def handle_sensor_message(db: Session, payload: bytes) -> bool:
+    """MQTT adapter: decode the message and use shared sensor validation."""
+    try:
+        data = json.loads(payload.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return False
+
+    if not isinstance(data, dict):
+        return False
+
+    return process_sensor_payload(db, data) is not None
