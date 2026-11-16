@@ -89,3 +89,64 @@ def test_out_of_service_slot_is_not_released_by_sensor(mock_incident):
 
     assert slot.status == "OUT_OF_SERVICE"
     assert slot.is_available is False
+
+@patch("app.services.sensor_service.incident_service.detect_sensor_incident")
+def test_explicit_offline_event_marks_sensor_offline(mock_incident):
+    db, sensor, _ = setup_db([])
+
+    event = sensor_service.process_event(
+        db, 101, "sensor_offline", None, {}
+    )
+
+    assert event is not None
+    assert sensor.is_online is False
+    assert sensor.last_seen_at is not None
+    mock_incident.assert_called_once_with(
+        db=db,
+        parking_lot_id=1,
+        event_type="sensor_offline",
+        value=None,
+        sensor_id=101,
+    )
+
+
+@patch("app.services.sensor_service.incident_service.detect_sensor_incident")
+def test_stale_sensor_is_marked_offline(mock_incident):
+    db = MagicMock()
+
+    sensor = MagicMock()
+    sensor.id = 101
+    sensor.parking_lot_id = 1
+    sensor.is_online = True
+
+    db.scalars.return_value.all.return_value = [sensor]
+
+    count = sensor_service.mark_stale_sensors_offline(
+        db,
+        timeout_seconds=120,
+    )
+
+    assert count == 1
+    assert sensor.is_online is False
+    mock_incident.assert_called_once_with(
+        db=db,
+        parking_lot_id=1,
+        event_type="sensor_offline",
+        sensor_id=101,
+    )
+    db.commit.assert_called_once()
+
+
+@patch("app.services.sensor_service.incident_service.detect_sensor_incident")
+def test_normal_reading_marks_sensor_online(mock_incident):
+    db, sensor, _ = setup_db(["occupied"])
+
+    sensor.is_online = False
+
+    event = sensor_service.process_event(
+        db, 101, "occupied", 8.5, {}
+    )
+
+    assert event is not None
+    assert sensor.is_online is True
+    assert sensor.last_seen_at is not None

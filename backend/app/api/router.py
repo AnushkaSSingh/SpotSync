@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    incidents,
     analytics,
     auth,
     bookings,
@@ -13,6 +14,7 @@ from app.api.routes import (
 )
 
 api_router = APIRouter(prefix="/api")
+api_router.include_router(incidents.router)
 api_router.include_router(auth.router)
 api_router.include_router(bookings.router)
 api_router.include_router(parking.router)

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from app.mqtt.message_handler import handle_sensor_message
@@ -10,7 +11,7 @@ def make_payload(**overrides):
         "slot_id": "B1-A1",
         "status": "occupied",
         "distance_cm": 8.5,
-        "timestamp": "2026-11-16T17:15:02+00:00",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     payload.update(overrides)
     return payload
@@ -107,3 +108,54 @@ def test_unassigned_sensor_is_rejected(mock_process):
 
     assert result is False
     mock_process.assert_not_called()
+
+
+def test_old_sensor_reading_is_rejected():
+    db, _, _ = setup_sensor_db()
+    old_timestamp = (
+        datetime.now(timezone.utc) - timedelta(minutes=5)
+    ).isoformat()
+
+    result = handle_sensor_message(
+        db,
+        json.dumps(make_payload(timestamp=old_timestamp)).encode(),
+    )
+
+    assert result is False
+
+
+def test_future_sensor_reading_is_rejected():
+    db, _, _ = setup_sensor_db()
+    future_timestamp = (
+        datetime.now(timezone.utc) + timedelta(minutes=2)
+    ).isoformat()
+
+    result = handle_sensor_message(
+        db,
+        json.dumps(make_payload(timestamp=future_timestamp)).encode(),
+    )
+
+    assert result is False
+
+
+def test_timezone_naive_sensor_reading_is_rejected():
+    db, _, _ = setup_sensor_db()
+    naive_timestamp = datetime.now().replace(microsecond=0).isoformat()
+
+    result = handle_sensor_message(
+        db,
+        json.dumps(make_payload(timestamp=naive_timestamp)).encode(),
+    )
+
+    assert result is False
+
+
+def test_invalid_timestamp_is_rejected():
+    db, _, _ = setup_sensor_db()
+
+    result = handle_sensor_message(
+        db,
+        json.dumps(make_payload(timestamp="not-a-timestamp")).encode(),
+    )
+
+    assert result is False

@@ -1,9 +1,11 @@
 import json
+from datetime import datetime, timezone
 
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.parking_slot import ParkingSlot
 from app.models.sensor import Sensor
 from app.mqtt.payload_validator import SensorPayload
@@ -25,6 +27,21 @@ def process_sensor_payload(db: Session, data: dict):
     try:
         sensor_payload = SensorPayload.model_validate(data)
     except ValidationError:
+        return None
+
+    reading_time = sensor_payload.timestamp
+
+    # Device timestamps must include a timezone.
+    if reading_time.tzinfo is None or reading_time.utcoffset() is None:
+        return None
+
+    now = datetime.now(timezone.utc)
+    age_seconds = (now - reading_time.astimezone(timezone.utc)).total_seconds()
+
+    if age_seconds > settings.sensor_stale_after_seconds:
+        return None
+
+    if age_seconds < -settings.sensor_max_future_skew_seconds:
         return None
 
     sensor_code = sensor_payload.sensor_id.strip()

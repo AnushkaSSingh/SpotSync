@@ -30,6 +30,7 @@ def get_incidents(
             {
                 "id": incident.id,
                 "parking_lot_id": incident.parking_lot_id,
+                "sensor_id": incident.sensor_id,
                 "incident_type": incident.incident_type,
                 "severity": incident.severity,
                 "status": incident.status,
