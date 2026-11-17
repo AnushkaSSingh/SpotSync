@@ -1,0 +1,20 @@
+CREATE CONSTRAINT mall_pg_id IF NOT EXISTS
+FOR (n:Mall) REQUIRE n.pg_id IS UNIQUE;
+
+CREATE CONSTRAINT floor_pg_id IF NOT EXISTS
+FOR (n:Floor) REQUIRE n.pg_id IS UNIQUE;
+
+CREATE CONSTRAINT parking_space_pg_id IF NOT EXISTS
+FOR (n:ParkingSpace) REQUIRE n.pg_id IS UNIQUE;
+
+CREATE CONSTRAINT entrance_key IF NOT EXISTS
+FOR (n:Entrance) REQUIRE n.key IS UNIQUE;
+
+CREATE CONSTRAINT ramp_key IF NOT EXISTS
+FOR (n:Ramp) REQUIRE n.key IS UNIQUE;
+
+CREATE CONSTRAINT sensor_pg_id IF NOT EXISTS
+FOR (n:Sensor) REQUIRE n.pg_id IS UNIQUE;
+
+CREATE CONSTRAINT sensor_code_unique IF NOT EXISTS
+FOR (n:Sensor) REQUIRE n.sensor_code IS UNIQUE;
