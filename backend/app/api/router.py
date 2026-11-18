@@ -25,3 +25,6 @@ api_router.include_router(recommendations.router)
 api_router.include_router(analytics.router)
 
 api_router.include_router(sensors.router)
+
+from app.api.navigation import router as navigation_router
+api_router.include_router(navigation_router)

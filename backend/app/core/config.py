@@ -9,6 +9,13 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     database_url: str
 
+    # Optional Neo4j graph database connection
+    neo4j_uri: str = ""
+    neo4j_username: str = "neo4j"
+    neo4j_password: str = ""
+    neo4j_database: str = "neo4j"
+    neo4j_connection_timeout: float = 10.0
+
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60

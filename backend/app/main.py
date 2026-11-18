@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.database.neo4j import initialize_neo4j, close_neo4j
 from app.mqtt.subscriber import start_mqtt_subscriber, stop_mqtt_subscriber
 from app.services.sensor_health_monitor import (
     start_sensor_health_monitor,
@@ -57,6 +58,7 @@ def root():
 @app.on_event("startup")
 def start_optional_mqtt():
     start_sensor_health_monitor()
+    initialize_neo4j()
     if settings.mqtt_enabled:
         start_mqtt_subscriber()
 
@@ -65,3 +67,4 @@ def start_optional_mqtt():
 def stop_optional_mqtt():
     stop_mqtt_subscriber()
     stop_sensor_health_monitor()
+    close_neo4j()
