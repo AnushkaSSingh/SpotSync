@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
+    booking_checkout_expiry_minutes: int = 15
 
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
     mqtt_broker: str = "localhost"
     mqtt_port: int = 1883
     mqtt_client_id: str = "spotsync-backend"
+    sensor_ingestion_token: str = ""
     sensor_stale_after_seconds: int = 120
     sensor_max_future_skew_seconds: int = 30
     sensor_health_check_interval_seconds: int = 30

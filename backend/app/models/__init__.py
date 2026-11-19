@@ -8,6 +8,7 @@ from app.models.refund import Refund
 from app.models.sensor import Sensor
 from app.models.sensor_event import SensorEvent
 from app.models.incident import Incident
+from app.models.parking_session import ParkingSession
 
 __all__ = [
     "User",
@@ -20,4 +21,8 @@ __all__ = [
     "Sensor",
     "SensorEvent",
     "Incident",
+    "ParkingSession",
+    "TicketToken",
 ]
+
+from app.models.ticket_token import TicketToken

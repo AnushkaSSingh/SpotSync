@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter
 
 from app.api.routes import (
@@ -10,10 +11,16 @@ from app.api.routes import (
     predictions,
     recommendations,
     sensors,
+    sessions,
+    tickets,
     vehicles,
+    notifications,
 )
 
+from app.api.navigation import router as navigation_router
+
 api_router = APIRouter(prefix="/api")
+
 api_router.include_router(incidents.router)
 api_router.include_router(auth.router)
 api_router.include_router(bookings.router)
@@ -23,8 +30,8 @@ api_router.include_router(vehicles.router)
 api_router.include_router(predictions.router)
 api_router.include_router(recommendations.router)
 api_router.include_router(analytics.router)
-
 api_router.include_router(sensors.router)
-
-from app.api.navigation import router as navigation_router
+api_router.include_router(sessions.router)
+api_router.include_router(tickets.router)
+api_router.include_router(notifications.router)
 api_router.include_router(navigation_router)

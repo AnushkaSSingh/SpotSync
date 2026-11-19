@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -31,3 +33,20 @@ class ParkingPredictionResponse(BaseModel):
     predicted_percentage: float
     available_percentage: float
     status: str
+
+
+class ParkingAvailabilitySlot(BaseModel):
+    id: int
+    parking_lot_id: int
+    slot_number: str
+    slot_type: str
+    status: str
+    is_available: bool
+
+
+class ParkingAvailabilityResponse(BaseModel):
+    parking_lot_id: int
+    start_time: datetime
+    end_time: datetime
+    count: int
+    slots: list[ParkingAvailabilitySlot]

@@ -1,7 +1,9 @@
-﻿from datetime import datetime, timezone
+﻿
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -18,6 +20,7 @@ from app.repositories.booking_repository import (
 from app.repositories.parking_repository import get_parking_lot_by_id
 from app.models.parking_slot import ParkingSlot
 from app.models.vehicle import Vehicle
+from app.services.notification_service import notification_service
 
 
 def create_user_booking(
@@ -36,6 +39,7 @@ def create_user_booking(
         end_time.replace(tzinfo=timezone.utc)
         if end_time.tzinfo is None else end_time
     )
+
     if normalized_start >= normalized_end:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -55,7 +59,12 @@ def create_user_booking(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vehicle not found",
         )
-    slot = db.get(ParkingSlot, parking_slot_id)
+
+    slot = db.scalar(
+        select(ParkingSlot)
+        .where(ParkingSlot.id == parking_slot_id)
+        .with_for_update()
+    )
 
     if not slot:
         raise HTTPException(
@@ -63,7 +72,7 @@ def create_user_booking(
             detail="Parking slot not found",
         )
 
-    if not slot.is_available:
+    if slot.status != "AVAILABLE" or not slot.is_available:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Parking slot is not available",
@@ -93,19 +102,26 @@ def create_user_booking(
     duration_hours = Decimal(
         str((normalized_end - normalized_start).total_seconds() / 3600)
     )
+
     # Match the existing booking UI options; amounts are still calculated server-side.
     parking_rates = {
         Decimal("2"): Decimal("60.00"),
         Decimal("4"): Decimal("120.00"),
         Decimal("24"): Decimal("250.00"),
     }
+
     whole_hours = duration_hours.quantize(Decimal("1"))
+
     if duration_hours != whole_hours or duration_hours <= 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Booking duration must be a positive whole number of hours",
         )
-    parking_fee = parking_rates.get(whole_hours, whole_hours * Decimal("30.00"))
+
+    parking_fee = parking_rates.get(
+        whole_hours,
+        whole_hours * Decimal("30.00"),
+    )
     total_amount = parking_fee + Decimal("10.00")
 
     booking = create_booking(
@@ -116,6 +132,9 @@ def create_user_booking(
         start_time=normalized_start,
         end_time=normalized_end,
         total_amount=total_amount,
+        expires_at=now + timedelta(
+            minutes=settings.booking_checkout_expiry_minutes
+        ),
     )
 
     try:
@@ -126,7 +145,17 @@ def create_user_booking(
             status_code=status.HTTP_409_CONFLICT,
             detail="This slot conflicts with another reservation. Please choose another time or slot.",
         ) from exc
+
     db.refresh(booking)
+
+    notification_service.create_safely(
+        db,
+        user_id,
+        "Booking request received",
+        f"Your booking request for parking slot {parking_slot_id} has been received. "
+        "It is pending payment confirmation.",
+        "info",
+    )
 
     return booking
 
@@ -213,5 +242,63 @@ def cancel_user_booking(
         ) from exc
 
     db.refresh(booking)
+
+    notification_service.create_safely(
+        db,
+        user_id,
+        "Booking cancelled",
+        f"Your booking #{booking.id} has been cancelled.",
+        "info",
+    )
+
     return booking, demo_refund_simulated
 
+
+def create_automatically_allocated_booking(
+    db: Session,
+    user_id: int,
+    vehicle_id: int,
+    parking_lot_id: int,
+    start_time: datetime,
+    end_time: datetime,
+):
+    if get_parking_lot_by_id(db, parking_lot_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Active parking lot not found",
+        )
+
+    candidates = db.scalars(
+        select(ParkingSlot)
+        .where(
+            ParkingSlot.parking_lot_id == parking_lot_id,
+            ParkingSlot.status == "AVAILABLE",
+            ParkingSlot.is_available.is_(True),
+        )
+        .order_by(ParkingSlot.id)
+        .with_for_update(skip_locked=True)
+    ).all()
+
+    for slot in candidates:
+        overlapping_booking = get_overlapping_booking(
+            db,
+            slot.id,
+            start_time,
+            end_time,
+        )
+
+        if overlapping_booking is None:
+            return create_user_booking(
+                db=db,
+                user_id=user_id,
+                vehicle_id=vehicle_id,
+                parking_slot_id=slot.id,
+                start_time=start_time,
+                end_time=end_time,
+            )
+
+    db.rollback()
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="No available parking slot for the selected time",
+    )

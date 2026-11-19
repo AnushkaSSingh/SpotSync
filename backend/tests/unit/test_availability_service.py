@@ -1,4 +1,5 @@
-﻿from datetime import datetime, timedelta, timezone
+﻿
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -39,6 +40,23 @@ def test_unavailable_slot_is_rejected():
     db = MagicMock()
     slot = MagicMock()
     slot.is_available = False
+    slot.status = "AVAILABLE"
+    db.get.return_value = slot
+    start, end = future_range()
+
+    assert is_slot_available(db, 1, start, end) is False
+    assert db.get.call_count == 1
+
+
+@pytest.mark.parametrize(
+    "status",
+    ["RESERVED", "OCCUPIED", "UNKNOWN", "OUT_OF_SERVICE"],
+)
+def test_non_available_status_is_rejected(status):
+    db = MagicMock()
+    slot = MagicMock()
+    slot.is_available = True
+    slot.status = status
     db.get.return_value = slot
     start, end = future_range()
 
@@ -50,9 +68,12 @@ def test_inactive_parking_lot_is_rejected():
     db = MagicMock()
     slot = MagicMock()
     slot.is_available = True
+    slot.status = "AVAILABLE"
     slot.parking_lot_id = 10
+
     lot = MagicMock()
     lot.is_active = False
+
     db.get.side_effect = [slot, lot]
     start, end = future_range()
 
@@ -63,9 +84,12 @@ def test_available_slot_with_no_overlap_is_accepted():
     db = MagicMock()
     slot = MagicMock()
     slot.is_available = True
+    slot.status = "AVAILABLE"
     slot.parking_lot_id = 10
+
     lot = MagicMock()
     lot.is_active = True
+
     db.get.side_effect = [slot, lot]
     db.query.return_value.filter.return_value.first.return_value = None
     start, end = future_range()

@@ -9,20 +9,24 @@ router = APIRouter(
 )
 
 
+def publish_parking_update(data: dict):
+    """Publish a trusted backend parking update to connected clients."""
+    connection_manager.broadcast_from_sync(
+        {
+            "type": "parking_update",
+            "data": data,
+        }
+    )
+
+
 @router.websocket("/parking")
 async def parking_updates(websocket: WebSocket):
     await connection_manager.connect(websocket)
 
     try:
         while True:
-            message = await websocket.receive_json()
-
-            await connection_manager.broadcast(
-                {
-                    "type": "parking_update",
-                    "data": message,
-                }
-            )
+            # Keep the connection alive; client messages are not broadcast.
+            await websocket.receive_text()
 
     except WebSocketDisconnect:
         connection_manager.disconnect(websocket)

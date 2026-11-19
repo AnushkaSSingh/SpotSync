@@ -12,6 +12,7 @@ from app.services.sensor_health_monitor import (
 )
 from app.api.routes import auth, bookings, parking, payments, analytics
 from app.api.routes.health import router as health_router
+from app.websocket.parking_updates import router as websocket_router
 
 app = FastAPI(
     title="SpotSync API",
@@ -37,6 +38,7 @@ app.add_middleware(
 
 # Health-check endpoints
 app.include_router(health_router)
+app.include_router(websocket_router)
 
 # Shared API routes, including predictions and recommendations
 app.include_router(api_router)

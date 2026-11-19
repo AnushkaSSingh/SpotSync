@@ -4,18 +4,20 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.mqtt.client import create_mqtt_client
 from app.mqtt.message_handler import handle_sensor_message
-from app.mqtt.topics import OCCUPANCY_TOPIC
+from app.mqtt.topics import ENTRANCE_EVENT_TOPIC, OCCUPANCY_TOPIC
 
 logger = logging.getLogger(__name__)
 
 MQTT_TOPIC = OCCUPANCY_TOPIC.replace("{slot_id}", "+")
+MQTT_TOPICS = (MQTT_TOPIC, ENTRANCE_EVENT_TOPIC)
 _mqtt_client = None
 
 
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
-        client.subscribe(MQTT_TOPIC)
-        logger.info("Subscribed to MQTT topic %s", MQTT_TOPIC)
+        for topic in MQTT_TOPICS:
+            client.subscribe(topic)
+            logger.info("Subscribed to MQTT topic %s", topic)
     else:
         logger.error("MQTT connection failed: %s", reason_code)
 

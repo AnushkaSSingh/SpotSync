@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer
+from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -12,6 +12,7 @@ class Prediction(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     parking_lot_id: Mapped[int] = mapped_column(
+        BigInteger,
         ForeignKey("parking_lots.id"),
         nullable=False,
     )

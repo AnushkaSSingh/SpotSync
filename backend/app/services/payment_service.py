@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from uuid import uuid4
 
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.booking import Booking
 from app.models.payment import Payment
+from app.services.notification_service import notification_service
 
 _CENT = Decimal("0.01")
 
@@ -62,8 +64,14 @@ def create_payment_order(
         raise ValueError("Booking not found")
     if booking.user_id != user_id:
         raise ValueError("You cannot pay for this booking")
-    if booking.status in ("cancelled", "completed", "confirmed"):
+    if booking.status in ("cancelled", "completed", "confirmed", "expired"):
         raise ValueError("This booking is already confirmed or cannot be paid")
+    expires_at = getattr(booking, "expires_at", None)
+    if isinstance(expires_at, datetime):
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= datetime.now(timezone.utc):
+            raise ValueError("This booking has expired. Please create a new booking.")
     if _money(amount) != _money(booking.total_amount):
         raise ValueError("Payment amount does not match booking amount")
     if currency.upper() != "INR":
@@ -137,6 +145,38 @@ def create_payment_order(
     return payment, _order_payload(order_id, payment.amount, payment.currency)
 
 
+def _booking_checkout_expired(booking) -> bool:
+    expires_at = getattr(booking, "expires_at", None)
+    if not isinstance(expires_at, datetime):
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at <= datetime.now(timezone.utc)
+
+
+def _refund_expired_payment(db: Session, payment) -> None:
+    from app.models.refund import Refund
+    from app.services.refund_service import create_refund
+
+    existing_refunds = (
+        db.query(Refund)
+        .filter(Refund.payment_id == payment.id)
+        .all()
+    )
+
+    reserved_statuses = {"pending", "processed", "simulated"}
+    if any(refund.status in reserved_statuses for refund in existing_refunds):
+        return
+
+    create_refund(
+        db=db,
+        payment_id=payment.id,
+        user_id=payment.user_id,
+        amount=_money(payment.amount),
+        reason="Automatic refund: booking checkout expired before payment verification",
+    )
+
+
 def verify_payment(
     db: Session,
     payment_id: int,
@@ -158,22 +198,29 @@ def verify_payment(
     if payment.razorpay_order_id != razorpay_order_id:
         raise ValueError("Payment order ID does not match")
 
-    if payment.status == "paid":
-        # Provider retries are idempotent only for the same verified values.
+    booking = db.get(Booking, payment.booking_id)
+    if booking is None:
+        raise ValueError("Booking not found for this payment")
+
+    # A retry after a successful capture must not create another refund.
+    if payment.status in ("paid", "partially_refunded", "refunded"):
         if (
             payment.razorpay_payment_id == razorpay_payment_id
             and payment.razorpay_signature == razorpay_signature
         ):
+            if booking.status == "expired" or (
+                booking.status == "pending" and _booking_checkout_expired(booking)
+            ):
+                _refund_expired_payment(db, payment)
+                db.refresh(payment)
             return payment
         raise ValueError("This payment has already been verified")
+
     if payment.status not in ("created", "pending"):
         raise ValueError("This payment cannot be verified")
     if not razorpay_payment_id or not razorpay_signature:
         raise ValueError("Payment verification details are required")
 
-    booking = db.get(Booking, payment.booking_id)
-    if booking is None:
-        raise ValueError("Booking not found for this payment")
     if booking.status in ("cancelled", "completed"):
         raise ValueError("This booking can no longer be confirmed")
     if booking.status == "confirmed":
@@ -198,10 +245,32 @@ def verify_payment(
     else:
         raise ValueError("Invalid payment mode configuration")
 
+    expired_checkout = (
+        booking.status == "expired"
+        or (booking.status == "pending" and _booking_checkout_expired(booking))
+    )
+
     payment.razorpay_payment_id = razorpay_payment_id
     payment.razorpay_signature = razorpay_signature
     payment.status = "paid"
-    booking.status = "confirmed"
+
+    # Never confirm a booking whose checkout window has already expired.
+    if not expired_checkout:
+        booking.status = "confirmed"
+
     db.commit()
     db.refresh(payment)
+
+    if expired_checkout:
+        _refund_expired_payment(db, payment)
+        db.refresh(payment)
+    else:
+        notification_service.create_safely(
+            db,
+            user_id,
+            "Payment successful — Booking confirmed",
+            f"Your booking #{booking.id} is confirmed. Your payment was successful.",
+            "success",
+        )
+
     return payment

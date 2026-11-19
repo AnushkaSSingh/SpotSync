@@ -1,5 +1,7 @@
-﻿from datetime import datetime
+﻿
+from datetime import datetime, timezone
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.models.booking import Booking
@@ -7,7 +9,17 @@ from app.models.parking_lot import ParkingLot
 from app.models.parking_slot import ParkingSlot
 
 
-ACTIVE_BOOKING_STATUSES = ("pending", "confirmed")
+def _active_booking_filter(now):
+    return or_(
+        Booking.status == "confirmed",
+        and_(
+            Booking.status == "pending",
+            or_(
+                Booking.expires_at.is_(None),
+                Booking.expires_at > now,
+            ),
+        ),
+    )
 
 
 def is_slot_available(
@@ -21,7 +33,12 @@ def is_slot_available(
         raise ValueError("End time must be after start time")
 
     slot = db.get(ParkingSlot, parking_slot_id)
-    if slot is None or not slot.is_available:
+
+    if (
+        slot is None
+        or slot.status != "AVAILABLE"
+        or not slot.is_available
+    ):
         return False
 
     lot = db.get(ParkingLot, slot.parking_lot_id)
@@ -32,7 +49,7 @@ def is_slot_available(
         db.query(Booking.id)
         .filter(
             Booking.parking_slot_id == parking_slot_id,
-            Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+            _active_booking_filter(datetime.now(timezone.utc)),
             Booking.start_time < end_time,
             Booking.end_time > start_time,
         )
@@ -60,6 +77,7 @@ def get_available_slots(
         db.query(ParkingSlot)
         .filter(
             ParkingSlot.parking_lot_id == parking_lot_id,
+            ParkingSlot.status == "AVAILABLE",
             ParkingSlot.is_available.is_(True),
         )
         .order_by(ParkingSlot.id)
@@ -72,12 +90,13 @@ def get_available_slots(
             db.query(Booking.id)
             .filter(
                 Booking.parking_slot_id == slot.id,
-                Booking.status.in_(ACTIVE_BOOKING_STATUSES),
+                _active_booking_filter(datetime.now(timezone.utc)),
                 Booking.start_time < end_time,
                 Booking.end_time > start_time,
             )
             .first()
         )
+
         if overlap is None:
             available.append(slot)
 
