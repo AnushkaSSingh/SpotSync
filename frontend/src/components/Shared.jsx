@@ -4,7 +4,8 @@ import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Bell,
 export const navItems = [
   ['Dashboard','/dashboard',LayoutDashboard],['New Entry','/entry',Plus],['Parking Layout','/layout',Grid2X2],
   ['Smart Allocation','/allocation',Gauge],['Digital Tickets','/tickets',Ticket],['Active Parking','/active',CarFront],
-  ['Exit Management','/exit',LogOut],['History','/history',History],['Mall Navigation','/navigation',Map],['Settings','/settings',Settings]
+  ['Exit Management','/exit',LogOut],['History','/history',History],['Mall Navigation','/navigation',Map],['Settings','/settings',Settings],['Mismatch Management','/mismatches',AlertTriangle],['System Health','/system-health',Activity]
+
 ]
 export function Brand({small=false}) { return <div className={'brand '+(small?'brand-small':'')}><span className="brand-mark"><ParkingCircle size={25}/></span><span>Spot<span className="brand-accent">Sync</span></span></div> }
 export function Status({value}) { return <span className={'status status-'+String(value).toLowerCase().replaceAll(' ','-')}>{value}</span> }
