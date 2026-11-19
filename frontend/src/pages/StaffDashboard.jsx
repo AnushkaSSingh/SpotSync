@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import '../styles/staff-dashboard.css'
 import {
   CarFront,
@@ -158,6 +159,8 @@ function FloorStatusCard({ floor }) {
 }
 
 function StaffDashboard() {
+  const navigate = useNavigate()
+
   return (
     <div className="staff-dashboard">
 
@@ -196,7 +199,7 @@ function StaffDashboard() {
             <p>Live overview of parking spaces across floors.</p>
           </div>
 
-          <button type="button" className="dashboard-text-button">
+          <button type="button" className="dashboard-text-button" onClick={() => navigate("/layout")}>
             View Parking Layout <ArrowRight size={16} />
           </button>
         </div>
@@ -286,8 +289,7 @@ function StaffDashboard() {
                 A vehicle may be detected in a different
                 space than its assigned location.
               </p>
-              <button type="button">
-                Review mismatch <ArrowRight size={14} />
+              <button type="button" onClick={() => navigate("/mismatches")}> Review mismatch <ArrowRight size={14} />
               </button>
             </div>
           </div>
@@ -311,8 +313,7 @@ function StaffDashboard() {
               floor congestion and distance from entrances.
             </p>
 
-            <button type="button" className="feature-action">
-              Open Allocation <ArrowUpRight size={16} />
+            <button type="button" className="feature-action" onClick={() => navigate("/allocation")}> Open Allocation <ArrowUpRight size={16} />
             </button>
           </div>
         </article>
@@ -331,8 +332,7 @@ function StaffDashboard() {
               routes through the mall.
             </p>
 
-            <button type="button" className="feature-action">
-              Explore Navigation <ArrowUpRight size={16} />
+            <button type="button" className="feature-action" onClick={() => navigate("/navigation")}> Explore Navigation <ArrowUpRight size={16} />
             </button>
           </div>
         </article>
@@ -351,8 +351,7 @@ function StaffDashboard() {
               and availability trends.
             </p>
 
-            <button type="button" className="feature-action">
-              View Analytics <ArrowUpRight size={16} />
+            <button type="button" className="feature-action" onClick={() => navigate("/history")}> View Analytics <ArrowUpRight size={16} />
             </button>
           </div>
         </article>
@@ -388,3 +387,4 @@ function StaffDashboard() {
 }
 
 export default StaffDashboard 
+
