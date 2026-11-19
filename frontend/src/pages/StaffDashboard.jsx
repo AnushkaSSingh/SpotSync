@@ -2,389 +2,234 @@ import { useNavigate } from 'react-router-dom'
 import '../styles/staff-dashboard.css'
 import {
   CarFront,
-  ParkingCircle,
   CircleParking,
   Activity,
   AlertTriangle,
-  ArrowUpRight,
   ArrowRight,
   Clock3,
-  MapPin,
   Sparkles,
-  Navigation,
   TrendingUp,
   CheckCircle2,
-  XCircle,
-  RefreshCw,
-  Users,
   Bell,
+  MapPin,
 } from 'lucide-react'
-
-const summaryCards = [
-  {
-    title: 'Total Parking Spaces',
-    value: '08',
-    subtitle: 'Across 2 floors',
-    icon: CircleParking,
-    color: 'purple',
-  },
-  {
-    title: 'Available Spaces',
-    value: '05',
-    subtitle: 'Ready for allocation',
-    icon: ParkingCircle,
-    color: 'green',
-  },
-  {
-    title: 'Occupied Spaces',
-    value: '02',
-    subtitle: 'Vehicles detected',
-    icon: CarFront,
-    color: 'blue',
-  },
-  {
-    title: 'Reserved Spaces',
-    value: '01',
-    subtitle: 'Awaiting vehicle arrival',
-    icon: Clock3,
-    color: 'pink',
-  },
-  {
-    title: 'Sensor Alerts',
-    value: '01',
-    subtitle: 'Needs staff attention',
-    icon: AlertTriangle,
-    color: 'orange',
-  },
-]
 
 const floors = [
   {
-    name: 'Basement 1',
     id: 'B1',
+    name: 'Basement 1',
     spaces: [
-      { id: 'B1-A1', status: 'occupied' },
-      { id: 'B1-A2', status: 'available' },
+      { id: 'B1-A1', status: 'available' },
+      { id: 'B1-A2', status: 'occupied' },
       { id: 'B1-A3', status: 'reserved' },
-      { id: 'B1-A4', status: 'available' },
+      { id: 'B1-A4', status: 'unknown' },
     ],
   },
   {
-    name: 'Basement 2',
     id: 'B2',
+    name: 'Basement 2',
     spaces: [
-      { id: 'B2-A1', status: 'available' },
-      { id: 'B2-A2', status: 'occupied' },
-      { id: 'B2-A3', status: 'available' },
-      { id: 'B2-A4', status: 'unknown' },
+      { id: 'B2-A1', status: 'occupied' },
+      { id: 'B2-A2', status: 'unknown' },
+      { id: 'B2-A3', status: 'reserved' },
     ],
   },
 ]
 
 const activities = [
-  {
-    title: 'Vehicle entered parking',
-    description: 'Vehicle assigned to B1-A1',
-    time: '10:42 AM',
-    icon: CarFront,
-    type: 'success',
-  },
-  {
-    title: 'Parking space reserved',
-    description: 'Space B1-A3 allocated',
-    time: '10:35 AM',
-    icon: CheckCircle2,
-    type: 'purple',
-  },
-  {
-    title: 'Sensor reliability alert',
-    description: 'Sensor S8 needs attention',
-    time: '10:21 AM',
-    icon: AlertTriangle,
-    type: 'warning',
-  },
+  { plate: 'DL3C 7781', action: 'Entry confirmed', slot: 'B1-A2', time: '10:42 AM', type: 'success' },
+  { plate: 'HR26 DK 2091', action: 'Exit completed', slot: 'B2-A1', time: '10:15 AM', type: 'success' },
+  { plate: 'UP14 BT 3302', action: 'Entry confirmed', slot: 'B1-A1', time: '09:58 AM', type: 'purple' },
 ]
 
-function SummaryCard({ card }) {
-  const Icon = card.icon
+const allSpaces = floors.flatMap((floor) => floor.spaces)
+const total = allSpaces.length
+const available = allSpaces.filter((space) => space.status === 'available').length
+const occupied = allSpaces.filter((space) => space.status === 'occupied').length
+const attention = allSpaces.filter((space) => space.status === 'unknown').length
 
-  return (
-    <article className="dashboard-stat-card">
-      <div className="dashboard-stat-top">
-        <span>{card.title}</span>
-        <div className={`dashboard-stat-icon ${card.color}`}>
-          <Icon size={21} />
-        </div>
-      </div>
-
-      <h2>{card.value}</h2>
-      <p>{card.subtitle}</p>
-    </article>
-  )
-}
-
-function FloorStatusCard({ floor }) {
-  return (
-    <article className="floor-status-card">
-      <div className="floor-status-heading">
-        <div>
-          <span className="floor-label">{floor.id}</span>
-          <h3>{floor.name}</h3>
-        </div>
-
-        <span className="floor-space-count">
-          {floor.spaces.length} Spaces
-        </span>
-      </div>
-
-      <div className="floor-space-grid">
-        {floor.spaces.map((space) => (
-          <div
-            key={space.id}
-            className={`floor-space ${space.status}`}
-          >
-            <CarFront size={22} />
-            <strong>{space.id}</strong>
-            <span>
-              {space.status === 'unknown'
-                ? 'Unknown'
-                : space.status.charAt(0).toUpperCase() +
-                  space.status.slice(1)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </article>
-  )
+const statusLabels = {
+  available: 'Free',
+  occupied: 'Occupied',
+  reserved: 'Reserved',
+  unknown: 'Needs attention',
 }
 
 function StaffDashboard() {
   const navigate = useNavigate()
 
+  const cards = [
+    { title: 'Total parking spaces', value: total, subtitle: 'Across 2 floors', icon: CircleParking, color: 'purple' },
+    { title: 'Available now', value: available, subtitle: 'Ready for allocation', icon: CheckCircle2, color: 'green' },
+    { title: 'Occupied', value: occupied, subtitle: 'Vehicles detected', icon: CarFront, color: 'blue' },
+    { title: 'Needs attention', value: attention, subtitle: 'Sensor or mismatch alerts', icon: AlertTriangle, color: 'orange' },
+  ]
+
   return (
     <div className="staff-dashboard">
-
-      {/* Welcome section */}
       <section className="dashboard-welcome">
         <div>
-          <span className="dashboard-eyebrow">
-            SPOTSYNC OPERATIONS
-          </span>
-
-          <h2>Welcome back, Staff!</h2>
-
-          <p>
-            Here's what's happening across your mall parking system.
-          </p>
+          <span className="dashboard-eyebrow">SUNDAY, 15 NOV 2026 / OPERATIONS OVERVIEW</span>
+          <h2>Good morning, Staff 2041</h2>
+          <p>Here's how your car park is moving right now.</p>
         </div>
-
-        <div className="dashboard-date">
-          <Clock3 size={17} />
-          <span>Live Parking Overview</span>
-        </div>
+        <button className="dashboard-primary-button" onClick={() => navigate('/entry')}>
+          + New entry
+        </button>
       </section>
 
-      {/* Summary cards */}
       <section className="dashboard-summary-grid">
-        {summaryCards.map((card) => (
-          <SummaryCard key={card.title} card={card} />
-        ))}
+        {cards.map((card) => {
+          const Icon = card.icon
+          return (
+            <article className="dashboard-stat-card" key={card.title}>
+              <div className="dashboard-stat-top">
+                <span>{card.title}</span>
+                <div className={`dashboard-stat-icon ${card.color}`}>
+                  <Icon size={20} />
+                </div>
+              </div>
+              <h2>{card.value}</h2>
+              <p>{card.subtitle}</p>
+            </article>
+          )
+        })}
       </section>
 
-      {/* Floor status */}
-      <section className="dashboard-section">
-        <div className="dashboard-section-heading">
-          <div>
-            <h2>Floor Status</h2>
-            <p>Live overview of parking spaces across floors.</p>
-          </div>
-
-          <button type="button" className="dashboard-text-button" onClick={() => navigate("/layout")}>
-            View Parking Layout <ArrowRight size={16} />
-          </button>
-        </div>
-
-        <div className="floor-status-grid">
-          {floors.map((floor) => (
-            <FloorStatusCard key={floor.id} floor={floor} />
-          ))}
-        </div>
-
-        <div className="floor-legend">
-          <span><i className="legend-dot available" /> Available</span>
-          <span><i className="legend-dot occupied" /> Occupied</span>
-          <span><i className="legend-dot reserved" /> Reserved</span>
-          <span><i className="legend-dot unknown" /> Unknown</span>
-        </div>
-      </section>
-
-      {/* Activity and alerts */}
-      <section className="dashboard-two-column">
-
-        <div className="dashboard-panel">
+      <section className="dashboard-main-grid">
+        <article className="dashboard-panel floor-plan-panel">
           <div className="dashboard-section-heading">
             <div>
-              <h2>Recent Activity</h2>
-              <p>Latest parking system updates.</p>
+              <h2>Live floor plan</h2>
+              <p>Tap a bay to inspect its status.</p>
             </div>
+            <button className="dashboard-text-button" onClick={() => navigate('/layout')}>
+              View layout <ArrowRight size={15} />
+            </button>
+          </div>
 
+          {floors.map((floor) => (
+            <div className="dashboard-floor" key={floor.id}>
+              <span className="dashboard-floor-label">{floor.name}</span>
+              <div className="dashboard-bay-grid">
+                {floor.spaces.map((space) => (
+                  <button
+                    type="button"
+                    key={space.id}
+                    className={`dashboard-bay ${space.status}`}
+                    onClick={() => navigate('/layout')}
+                  >
+                    <strong>{space.id}</strong>
+                    <span>{statusLabels[space.status]}</span>
+                    {space.status === 'occupied' && <CarFront size={19} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="floor-legend">
+            <span><i className="legend-dot available" /> Free</span>
+            <span><i className="legend-dot occupied" /> Occupied</span>
+            <span><i className="legend-dot reserved" /> Reserved</span>
+            <span><i className="legend-dot unknown" /> Attention</span>
+          </div>
+        </article>
+
+        <article className="dashboard-panel attention-panel">
+          <div className="dashboard-section-heading">
+            <div>
+              <h2>Attention needed</h2>
+              <p>Resolve issues before the next rush.</p>
+            </div>
+            <Bell size={20} className="panel-heading-icon" />
+          </div>
+
+          <div className="dashboard-alert mismatch-alert">
+            <div>
+              <span className="alert-tag">MISMATCH</span>
+              <strong>Parking mismatch detected</strong>
+              <p>A vehicle's detected location differs from its assigned bay.</p>
+              <button onClick={() => navigate('/mismatches')}>
+                Review mismatch <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+
+          <div className="dashboard-alert warning-alert">
+            <div>
+              <span className="alert-tag">SENSOR OFFLINE</span>
+              <strong>Sensor needs attention</strong>
+              <p>Check sensor status and the affected parking bay.</p>
+              <button onClick={() => navigate('/system-health')}>
+                Check system health <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="dashboard-lower-grid">
+        <article className="dashboard-panel">
+          <div className="dashboard-section-heading">
+            <div>
+              <h2>Recent activity</h2>
+              <p>Live entry and exit updates.</p>
+            </div>
             <Activity size={20} className="panel-heading-icon" />
           </div>
 
           <div className="activity-list">
-            {activities.map((activity, index) => {
-              const Icon = activity.icon
-
-              return (
-                <div className="activity-item" key={index}>
-                  <div className={`activity-icon ${activity.type}`}>
-                    <Icon size={19} />
-                  </div>
-
-                  <div className="activity-details">
-                    <strong>{activity.title}</strong>
-                    <span>{activity.description}</span>
-                  </div>
-
-                  <time>{activity.time}</time>
+            {activities.map((item) => (
+              <div className="activity-item" key={item.plate}>
+                <div className={`activity-icon ${item.type}`}>
+                  <CarFront size={19} />
                 </div>
-              )
-            })}
+                <div className="activity-details">
+                  <strong>{item.plate}</strong>
+                  <span>{item.action}</span>
+                </div>
+                <div className="activity-slot">
+                  <strong>{item.slot}</strong>
+                  <time>{item.time}</time>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </article>
 
-        <div className="dashboard-panel">
+        <article className="dashboard-panel smart-allocation-panel">
           <div className="dashboard-section-heading">
             <div>
-              <h2>Alerts & Notifications</h2>
-              <p>Items that require staff attention.</p>
+              <h2>Smart allocation</h2>
+              <p>Recommended bay for the next arrival.</p>
             </div>
-
-            <Bell size={20} className="panel-heading-icon" />
+            <Sparkles size={20} className="panel-heading-icon" />
           </div>
 
-          <div className="dashboard-alert warning-alert">
-            <div className="alert-icon">
-              <AlertTriangle size={19} />
+          <div className="allocation-recommendation">
+            <div className="recommended-bay">
+              <MapPin size={24} />
+              <strong>B1-A1</strong>
             </div>
-
             <div>
-              <strong>Sensor S8 reliability issue</strong>
-              <p>
-                B2-A4 has unreliable sensor readings.
-                Space availability cannot be confirmed.
-              </p>
-              <span>Sensor Monitoring</span>
+              <strong>Nearest to entrance</strong>
+              <p>Low congestion · Check live availability</p>
+              <span className="match-score">Suggested bay</span>
             </div>
           </div>
 
-          <div className="dashboard-alert mismatch-alert">
-            <div className="alert-icon">
-              <CarFront size={19} />
-            </div>
-
-            <div>
-              <strong>Parking mismatch detected</strong>
-              <p>
-                A vehicle may be detected in a different
-                space than its assigned location.
-              </p>
-              <button type="button" onClick={() => navigate("/mismatches")}> Review mismatch <ArrowRight size={14} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </section>
-
-      {/* Smart allocation */}
-      <section className="dashboard-feature-grid">
-
-        <article className="dashboard-feature-card">
-          <div className="feature-card-icon purple-feature">
-            <Sparkles size={22} />
-          </div>
-
-          <div className="feature-card-content">
-            <span className="feature-label">SMART ALLOCATION</span>
-            <h3>Intelligent Parking Allocation</h3>
-            <p>
-              Find suitable parking spaces using availability,
-              floor congestion and distance from entrances.
-            </p>
-
-            <button type="button" className="feature-action" onClick={() => navigate("/allocation")}> Open Allocation <ArrowUpRight size={16} />
-            </button>
-          </div>
+          <button className="dashboard-text-button" onClick={() => navigate('/allocation')}>
+            View allocation <ArrowRight size={15} />
+          </button>
         </article>
-
-        {/* Mall navigation */}
-        <article className="dashboard-feature-card">
-          <div className="feature-card-icon blue-feature">
-            <Navigation size={22} />
-          </div>
-
-          <div className="feature-card-content">
-            <span className="feature-label">MALL NAVIGATION</span>
-            <h3>Smart Mall Navigation</h3>
-            <p>
-              Help staff locate parking spaces and identify
-              routes through the mall.
-            </p>
-
-            <button type="button" className="feature-action" onClick={() => navigate("/navigation")}> Explore Navigation <ArrowUpRight size={16} />
-            </button>
-          </div>
-        </article>
-
-        {/* Analytics */}
-        <article className="dashboard-feature-card">
-          <div className="feature-card-icon pink-feature">
-            <TrendingUp size={22} />
-          </div>
-
-          <div className="feature-card-content">
-            <span className="feature-label">PARKING ANALYTICS</span>
-            <h3>Parking Insights</h3>
-            <p>
-              Review floor utilization, peak parking hours
-              and availability trends.
-            </p>
-
-            <button type="button" className="feature-action" onClick={() => navigate("/history")}> View Analytics <ArrowUpRight size={16} />
-            </button>
-          </div>
-        </article>
-
-      </section>
-
-      {/* Quick overview */}
-      <section className="dashboard-bottom-card">
-        <div className="bottom-card-icon">
-          <MapPin size={23} />
-        </div>
-
-        <div>
-          <h3>Parking System Overview</h3>
-          <p>
-            2 floors · 8 parking spaces · 8 sensor points
-          </p>
-        </div>
-
-        <div className="system-online-badge">
-          <span />
-          System Overview
-        </div>
       </section>
 
       <p className="dashboard-demo-note">
-        Dashboard preview — sample display data.
-        Live sensor and backend integration will be added later.
+        Dashboard preview · Sample display data. Live values require backend integration.
       </p>
-
     </div>
   )
 }
 
-export default StaffDashboard 
-
+export default StaffDashboard
