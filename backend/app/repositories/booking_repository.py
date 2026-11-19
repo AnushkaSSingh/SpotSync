@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.booking import Booking
@@ -14,6 +14,7 @@ def create_booking(
     start_time: datetime,
     end_time: datetime,
     total_amount,
+    expires_at=None,
 ):
     booking = Booking(
         user_id=user_id,
@@ -22,6 +23,7 @@ def create_booking(
         start_time=start_time,
         end_time=end_time,
         total_amount=total_amount,
+        expires_at=expires_at,
     )
 
     db.add(booking)
@@ -60,7 +62,16 @@ def get_overlapping_booking(
     return db.scalar(
         select(Booking).where(
             Booking.parking_slot_id == parking_slot_id,
-            Booking.status.in_(["pending", "confirmed"]),
+            or_(
+                Booking.status == "confirmed",
+                and_(
+                    Booking.status == "pending",
+                    or_(
+                        Booking.expires_at.is_(None),
+                        Booking.expires_at > datetime.now(timezone.utc),
+                    ),
+                ),
+            ),
             Booking.start_time < end_time,
             Booking.end_time > start_time,
         )

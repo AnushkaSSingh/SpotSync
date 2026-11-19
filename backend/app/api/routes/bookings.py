@@ -7,11 +7,13 @@ from app.core.database import get_db
 from app.schemas.booking import (
     BookingCancellationResponse,
     BookingCreate,
+    AutomaticBookingCreate,
     BookingResponse,
 )
 from app.services.booking_service import (
     cancel_user_booking,
     create_user_booking,
+    create_automatically_allocated_booking,
     get_booking_for_user,
     list_user_bookings,
 )
@@ -37,6 +39,26 @@ def create_booking(
         user_id=current_user.id,
         vehicle_id=booking_data.vehicle_id,
         parking_slot_id=booking_data.parking_slot_id,
+        start_time=booking_data.start_time,
+        end_time=booking_data.end_time,
+    )
+
+
+@router.post(
+    "/auto",
+    response_model=BookingResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_automatic_booking(
+    booking_data: AutomaticBookingCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return create_automatically_allocated_booking(
+        db=db,
+        user_id=current_user.id,
+        vehicle_id=booking_data.vehicle_id,
+        parking_lot_id=booking_data.parking_lot_id,
         start_time=booking_data.start_time,
         end_time=booking_data.end_time,
     )

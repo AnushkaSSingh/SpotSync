@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -13,16 +13,19 @@ class Booking(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     user_id: Mapped[int] = mapped_column(
+        BigInteger,
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
     )
 
     vehicle_id: Mapped[int] = mapped_column(
+        BigInteger,
         ForeignKey("vehicles.id", ondelete="RESTRICT"),
         nullable=False,
     )
 
     parking_slot_id: Mapped[int] = mapped_column(
+        BigInteger,
         ForeignKey("parking_slots.id", ondelete="RESTRICT"),
         nullable=False,
     )
@@ -35,6 +38,11 @@ class Booking(Base):
     end_time: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
+    )
+
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
     status: Mapped[str] = mapped_column(

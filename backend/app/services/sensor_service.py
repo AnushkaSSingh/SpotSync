@@ -1,3 +1,4 @@
+
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import or_, select
@@ -7,9 +8,19 @@ from app.models.parking_slot import ParkingSlot
 from app.models.sensor import Sensor
 from app.models.sensor_event import SensorEvent
 from app.services.incident_service import incident_service
+from app.websocket.parking_updates import publish_parking_update
+from app.repositories.session_repository import get_active_session_for_slot_for_update
 
 
 class SensorService:
+
+    @staticmethod
+    def _mark_slot_unknown(slot: ParkingSlot | None) -> None:
+        if slot is None or slot.status in {"RESERVED", "OUT_OF_SERVICE"}:
+            return
+
+        slot.status = "UNKNOWN"
+        slot.is_available = False
 
     def process_event(
         self,
@@ -45,7 +56,11 @@ class SensorService:
         if sensor.parking_slot_id is not None:
             slot = db.get(ParkingSlot, sensor.parking_slot_id)
 
-        # Offline/fault events must never count as occupancy readings.
+        # Offline events must make the assigned slot unavailable.
+        if is_offline_event:
+            self._mark_slot_unknown(slot)
+
+        # Fault and offline events must never count as occupancy readings.
         if (
             not is_offline_event
             and slot is not None
@@ -65,10 +80,20 @@ class SensorService:
                 reading == event_type for reading in recent_events
             ):
                 if event_type == "occupied":
-                    slot.status = "OCCUPIED"
-                    slot.is_available = False
+                    # Never overwrite an out-of-service slot.
+                    if slot.status != "OUT_OF_SERVICE":
+                        slot.status = "OCCUPIED"
+                        slot.is_available = False
 
                 elif slot.status not in {"RESERVED", "OUT_OF_SERVICE"}:
+                    # A stable vacancy reading confirms the vehicle has left.
+                    active_session = get_active_session_for_slot_for_update(
+                        db, slot.id
+                    )
+                    if active_session is not None:
+                        active_session.status = "COMPLETED"
+                        active_session.ended_at = now
+
                     slot.status = "AVAILABLE"
                     slot.is_available = True
 
@@ -105,9 +130,30 @@ class SensorService:
         )
 
         stale_sensors = db.scalars(statement).all()
+        changed_slots = {}
 
         for sensor in stale_sensors:
             sensor.is_online = False
+
+            if sensor.parking_slot_id is not None:
+                slot = db.get(ParkingSlot, sensor.parking_slot_id)
+                previous_state = (
+                    getattr(slot, "status", None),
+                    getattr(slot, "is_available", None),
+                )
+                self._mark_slot_unknown(slot)
+
+                if slot is not None:
+                    current_state = (slot.status, slot.is_available)
+                    if current_state != previous_state:
+                        changed_slots[slot.id] = {
+                            "slot_id": slot.id,
+                            "slot_number": slot.slot_number,
+                            "status": slot.status,
+                            "is_available": slot.is_available,
+                            "event_type": "sensor_offline",
+                            "sensor_id": sensor.id,
+                        }
 
             if sensor.parking_lot_id is not None:
                 incident_service.detect_sensor_incident(
@@ -118,6 +164,10 @@ class SensorService:
                 )
 
         db.commit()
+
+        for update in changed_slots.values():
+            publish_parking_update(update)
+
         return len(stale_sensors)
 
     def get_sensor(

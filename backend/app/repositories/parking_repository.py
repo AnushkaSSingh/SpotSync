@@ -1,3 +1,4 @@
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -44,6 +45,7 @@ def get_available_parking_slots(
         select(ParkingSlot)
         .where(
             ParkingSlot.parking_lot_id == parking_lot_id,
+            ParkingSlot.status == "AVAILABLE",
             ParkingSlot.is_available.is_(True),
         )
         .order_by(ParkingSlot.id)
@@ -68,10 +70,13 @@ def get_parking_occupancy(
 
     available_slots = sum(
         1 for slot in slots
-        if slot.is_available
+        if slot.status == "AVAILABLE" and slot.is_available
     )
 
-    occupied_slots = total_slots - available_slots
+    occupied_slots = sum(
+        1 for slot in slots
+        if slot.status == "OCCUPIED"
+    )
 
     occupancy_rate = occupied_slots / total_slots
 

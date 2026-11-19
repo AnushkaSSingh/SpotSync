@@ -1,21 +1,23 @@
-﻿from pydantic import BaseModel
-from app.models.parking_slot import ParkingSlot
-
+﻿
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, require_admin
-from app.models.parking_lot import ParkingLot
+from app.api.dependencies import get_current_user, get_db, require_admin
 from app.models.booking import Booking
+from app.models.parking_lot import ParkingLot
 from app.models.parking_slot import ParkingSlot
 from app.schemas.parking import (
     ParkingOverviewResponse,
     ParkingPredictionRequest,
     ParkingPredictionResponse,
+    ParkingAvailabilityResponse,
 )
 from app.services.parking_service import parking_service
-
+from app.services.availability_service import get_available_slots
+from app.websocket.parking_updates import publish_parking_update
 
 
 router = APIRouter(prefix="/parking", tags=["Parking"])
@@ -56,7 +58,6 @@ def predict_parking(
     return prediction
 
 
-
 @router.get("/slots")
 def get_parking_slots(
     parking_lot_id: int | None = Query(default=None, gt=0),
@@ -90,7 +91,10 @@ def get_parking_slots(
         )
 
     if available_only:
-        query = query.filter(ParkingSlot.is_available.is_(True))
+        query = query.filter(
+            ParkingSlot.status == "AVAILABLE",
+            ParkingSlot.is_available.is_(True),
+        )
 
     slots = query.order_by(ParkingSlot.id).all()
 
@@ -102,11 +106,77 @@ def get_parking_slots(
                 "parking_lot_id": slot.parking_lot_id,
                 "slot_number": slot.slot_number,
                 "slot_type": slot.slot_type,
+                "is_available": (
+                    slot.status == "AVAILABLE" and slot.is_available
+                ),
+            }
+            for slot in slots
+        ],
+    }
+
+
+@router.get("/availability", response_model=ParkingAvailabilityResponse)
+def get_parking_availability(
+    parking_lot_id: int = Query(..., gt=0),
+    start_time: datetime = Query(...),
+    end_time: datetime = Query(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Return physically available slots without overlapping active bookings."""
+    normalized_start = (
+        start_time.replace(tzinfo=timezone.utc)
+        if start_time.tzinfo is None else start_time
+    )
+    normalized_end = (
+        end_time.replace(tzinfo=timezone.utc)
+        if end_time.tzinfo is None else end_time
+    )
+
+    if normalized_start >= normalized_end:
+        raise HTTPException(
+            status_code=400,
+            detail="End time must be after start time",
+        )
+
+    if normalized_start < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail="Availability cannot be checked for a past start time",
+        )
+
+    lot = db.get(ParkingLot, parking_lot_id)
+    if lot is None or not lot.is_active:
+        raise HTTPException(
+            status_code=404,
+            detail="Active parking lot not found",
+        )
+
+    slots = get_available_slots(
+        db,
+        parking_lot_id,
+        normalized_start,
+        normalized_end,
+    )
+
+    return {
+        "parking_lot_id": parking_lot_id,
+        "start_time": normalized_start,
+        "end_time": normalized_end,
+        "count": len(slots),
+        "slots": [
+            {
+                "id": slot.id,
+                "parking_lot_id": slot.parking_lot_id,
+                "slot_number": slot.slot_number,
+                "slot_type": slot.slot_type,
+                "status": slot.status,
                 "is_available": slot.is_available,
             }
             for slot in slots
         ],
     }
+
 
 @router.get("/live")
 def live_parking_status(
@@ -133,8 +203,6 @@ def live_parking_status(
     }
 
 
-
-
 class SlotAvailabilityUpdate(BaseModel):
     is_available: bool
 
@@ -155,9 +223,8 @@ def update_slot_availability(
         )
 
     if request.is_available:
-        from datetime import datetime, timezone
-
         now = datetime.now(timezone.utc)
+
         active_booking = (
             db.query(Booking)
             .filter(
@@ -175,13 +242,37 @@ def update_slot_availability(
                 detail="Cannot mark this slot available while a booking is active",
             )
 
+        if slot.status in {"RESERVED", "OCCUPIED", "OUT_OF_SERVICE"}:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot mark a {slot.status} slot as available directly",
+            )
+
+        slot.status = "AVAILABLE"
+        slot.is_available = True
+
+    else:
+        slot.is_available = False
+
+        if slot.status == "AVAILABLE":
+            slot.status = "UNKNOWN"
+
     try:
-        slot.is_available = request.is_available
         db.commit()
         db.refresh(slot)
     except Exception:
         db.rollback()
         raise
+
+    publish_parking_update(
+        {
+            "slot_id": slot.id,
+            "slot_number": slot.slot_number,
+            "status": slot.status,
+            "is_available": slot.is_available,
+            "event_type": "admin_update",
+        }
+    )
 
     return {
         "id": slot.id,

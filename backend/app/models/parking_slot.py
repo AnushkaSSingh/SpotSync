@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -9,9 +9,17 @@ from app.core.database import Base
 class ParkingSlot(Base):
     __tablename__ = "parking_slots"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    __table_args__ = (
+        UniqueConstraint(
+            "parking_lot_id", "id",
+            name="uq_parking_slots_lot_id_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
 
     parking_lot_id: Mapped[int] = mapped_column(
+        BigInteger,
         ForeignKey("parking_lots.id", ondelete="CASCADE"),
         nullable=False,
     )

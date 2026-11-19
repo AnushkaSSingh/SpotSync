@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -15,21 +15,21 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
 class CreatePaymentRequest(BaseModel):
-    booking_id: int
-    amount: Decimal
+    booking_id: int = Field(gt=0)
+    amount: Decimal = Field(gt=0)
     currency: str = "INR"
 
 
 class VerifyPaymentRequest(BaseModel):
-    payment_id: int
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
+    payment_id: int = Field(gt=0)
+    razorpay_order_id: str = Field(min_length=1, max_length=255)
+    razorpay_payment_id: str = Field(min_length=1, max_length=255)
+    razorpay_signature: str = Field(min_length=1, max_length=255)
 
 
 class RefundRequest(BaseModel):
-    payment_id: int
-    amount: Decimal
+    payment_id: int = Field(gt=0)
+    amount: Decimal = Field(gt=0)
     reason: str | None = None
 
 

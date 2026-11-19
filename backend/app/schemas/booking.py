@@ -20,6 +20,7 @@ class BookingResponse(BaseModel):
     parking_slot_id: int
     start_time: datetime
     end_time: datetime
+    expires_at: datetime | None = None
     status: str
     total_amount: Decimal
     created_at: datetime
@@ -30,3 +31,10 @@ class BookingCancellationResponse(BookingResponse):
     demo_mode: bool = False
     demo_refund_simulated: bool = False
     message: str
+
+
+class AutomaticBookingCreate(BaseModel):
+    vehicle_id: int
+    parking_lot_id: int
+    start_time: datetime
+    end_time: datetime
