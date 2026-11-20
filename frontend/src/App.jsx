@@ -1,19 +1,20 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react'
-import PublicNavigation from './pages/PublicNavigation'
 import {
   BrowserRouter,
   useLocation,
   useNavigate,
   Navigate
 } from 'react-router-dom'
-import {
-  initialAlerts,
-  initialSpaces
-} from './data/mockData'
 
+import { initialAlerts, initialSpaces } from './data/mockData'
+import { SpotSyncProvider } from './context/SpotSyncContext'
 import { Shell } from './components/Shared'
+
+import Landing from './pages/Landing'
+import SignUp from './pages/SignUp'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
+import StaffDashboard from './pages/StaffDashboard'
+
 import Entry from './pages/Entry'
 import Layout from './pages/Layout'
 import Allocation from './pages/Allocation'
@@ -21,9 +22,16 @@ import Tickets from './pages/Tickets'
 import Active from './pages/Active'
 import Exit from './pages/Exit'
 import History from './pages/History'
-import Navigation from './pages/Navigation'
-import Settings from './pages/Settings'
 import Reservations from './pages/Reservations'
+import Navigation from './pages/Navigation'
+import PublicNavigation from './pages/PublicNavigation'
+import Settings from './pages/Settings'
+
+import Sensors from './pages/Sensors'
+import Mismatches from './pages/Mismatches'
+import Notifications from './pages/Notifications'
+import SystemHealth from './pages/SystemHealth'
+
 import {
   api,
   getAuthToken,
@@ -34,30 +42,27 @@ function Workspace() {
   const [authenticated, setAuthenticated] = useState(false)
   const [authChecking, setAuthChecking] = useState(true)
   const [currentUser, setCurrentUser] = useState(null)
-  
-  
+
   const [spaces, setSpaces] = useState(initialSpaces)
   const [sessions, setSessions] = useState([])
-  const [alerts, setAlerts] = useState(initialAlerts)
+  const [alerts] = useState(initialAlerts)
 
   const location = useLocation()
   const navigate = useNavigate()
 
-  const go = path => navigate(path)
   const path = location.pathname
+  const go = target => navigate(target)
+
+  // Public routes are rendered after all hooks to preserve hook order.
+  const navigationMatch = path.match(/^\/navigate\/([^/]+)\/?$/)
   const driverMatch = path.match(/^\/driver\/([^/]+)\/?$/)
 
   useEffect(() => {
     let active = true
 
     async function restoreSession() {
-      const token = getAuthToken()
-
-      if (!token) {
-        if (active) {
-          setAuthenticated(false)
-          setAuthChecking(false)
-        }
+      if (!getAuthToken()) {
+        if (active) setAuthChecking(false)
         return
       }
 
@@ -76,9 +81,7 @@ function Workspace() {
           setAuthenticated(false)
         }
       } finally {
-        if (active) {
-          setAuthChecking(false)
-        }
+        if (active) setAuthChecking(false)
       }
     }
 
@@ -97,12 +100,13 @@ function Workspace() {
         api.parking.slots({ availableOnly: false })
       ])
 
-    // Load real parking bays independently of session/vehicle failures.
+    let backendSlots = []
+
     if (slotResult.status === 'fulfilled') {
-      const slotResponse = slotResult.value
-      const backendSlots = Array.isArray(slotResponse)
-        ? slotResponse
-        : slotResponse?.slots || []
+      const response = slotResult.value
+      backendSlots = Array.isArray(response)
+        ? response
+        : response?.slots || []
 
       const backendSpaces = backendSlots.map(slot => {
         const displayCode =
@@ -127,26 +131,17 @@ function Workspace() {
         }
       })
 
-      if (backendSpaces.length > 0) {
-        setSpaces(backendSpaces)
-        console.info(
-          `Navigation received ${backendSpaces.length} real parking bays.`
-        )
-      } else {
-        console.warn('Parking slots API returned no parking bays.')
-      }
+      if (backendSpaces.length) setSpaces(backendSpaces)
     } else {
-      console.error('Unable to load real parking bays:', slotResult.reason)
+      console.error('Unable to load parking bays:', slotResult.reason)
     }
-
-    const vehicleResponse =
-      vehicleResult.status === 'fulfilled'
-        ? vehicleResult.value
-        : null
 
     if (vehicleResult.status === 'rejected') {
       console.error('Unable to load vehicles:', vehicleResult.reason)
     }
+
+    const vehicleResponse =
+      vehicleResult.status === 'fulfilled' ? vehicleResult.value : null
 
     const vehicles = Array.isArray(vehicleResponse)
       ? vehicleResponse
@@ -165,13 +160,6 @@ function Workspace() {
     const backendSessions = Array.isArray(sessionResponse)
       ? sessionResponse
       : sessionResponse?.sessions || []
-
-    const slotResponse =
-      slotResult.status === 'fulfilled' ? slotResult.value : null
-
-    const backendSlots = Array.isArray(slotResponse)
-      ? slotResponse
-      : slotResponse?.slots || []
 
     const slotMap = new Map(
       backendSlots.map(slot => [slot.id, slot])
@@ -213,18 +201,9 @@ function Workspace() {
   useEffect(() => {
     if (!authenticated) return
 
-    async function load() {
-      try {
-        await loadRealSessions()
-      } catch (error) {
-        console.error(
-          'Unable to load parking sessions:',
-          error
-        )
-      }
-    }
-
-    load()
+    loadRealSessions().catch(error => {
+      console.error('Unable to refresh parking data:', error)
+    })
   }, [authenticated, loadRealSessions])
 
   function handleLogin(user) {
@@ -242,54 +221,22 @@ function Workspace() {
   }
 
   async function createSession() {
-    try {
-      await loadRealSessions()
-    } catch (error) {
-      console.error(
-        'Session was created, but refreshing the session list failed:',
-        error
-      )
-    }
+    await loadRealSessions()
   }
 
   async function processExit(sessionId) {
     if (!sessionId) {
-      throw new Error(
-        'This session does not have a valid backend ID.'
-      )
+      throw new Error('This session does not have a valid backend ID.')
     }
 
     await api.sessions.exit(Number(sessionId))
-
-    try {
-      await loadRealSessions()
-    } catch (error) {
-      console.error(
-        'Exit succeeded, but refreshing sessions failed:',
-        error
-      )
-
-      setSessions(previous =>
-        previous.map(session =>
-          Number(session.sessionId) === Number(sessionId)
-            ? {
-                ...session,
-                status: 'COMPLETED',
-                endedAt: new Date().toISOString()
-              }
-            : session
-        )
-      )
-    }
+    await loadRealSessions()
   }
 
-  const navigationMatch = path.match(/^\/navigate\/([^/]+)\/?$/)
-
-  // Public driver navigation route — no staff login required.
   if (navigationMatch) {
     return <PublicNavigation />
   }
-  // Public driver ticket route â€” no staff login required.
+
   if (driverMatch) {
     return (
       <Navigate
@@ -297,6 +244,14 @@ function Workspace() {
         replace
       />
     )
+  }
+
+  if (path === '/') return <Landing />
+  if (path === '/signup') return <SignUp />
+
+  if (path === '/login') {
+    if (authenticated) return <Navigate to="/dashboard" replace />
+    return <Login onLogin={handleLogin} />
   }
 
   if (authChecking) {
@@ -313,10 +268,6 @@ function Workspace() {
     return <Login onLogin={handleLogin} />
   }
 
-  if (path === '/login') {
-    return <Navigate to="/dashboard" replace />
-  }
-
   const common = {
     spaces,
     sessions,
@@ -329,61 +280,52 @@ function Workspace() {
 
   switch (path) {
     case '/dashboard':
-      page = <Dashboard {...common} />
+      page = <StaffDashboard {...common} />
       break
-
     case '/entry':
-      page = (
-        <Entry
-          spaces={spaces}
-          onCreate={createSession}
-        />
-      )
+      page = <Entry spaces={spaces} onCreate={createSession} />
       break
-
     case '/layout':
       page = <Layout spaces={spaces} />
       break
-
     case '/allocation':
       page = <Allocation spaces={spaces} />
       break
-
     case '/tickets':
       page = <Tickets sessions={sessions} />
       break
-
     case '/active':
       page = <Active sessions={sessions} go={go} />
       break
-
     case '/exit':
-      page = (
-        <Exit
-          sessions={sessions}
-          onExit={processExit}
-        />
-      )
+      page = <Exit sessions={sessions} onExit={processExit} />
       break
-
     case '/history':
       page = <History sessions={sessions} />
       break
-
     case '/reservations':
       page = <Reservations />
       break
-
     case '/navigation':
       page = <Navigation spaces={spaces} />
       break
-
     case '/settings':
       page = <Settings />
       break
-
+    case '/sensors':
+      page = <Sensors />
+      break
+    case '/mismatches':
+      page = <Mismatches />
+      break
+    case '/notifications':
+      page = <Notifications />
+      break
+    case '/system-health':
+      page = <SystemHealth />
+      break
     default:
-      page = <Dashboard {...common} />
+      page = <Navigate to="/dashboard" replace />
   }
 
   return (
@@ -399,12 +341,11 @@ function Workspace() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Workspace />
-    </BrowserRouter>
+    <SpotSyncProvider>
+      <BrowserRouter>
+        <Workspace />
+      </BrowserRouter>
+    </SpotSyncProvider>
   )
 }
-
-
-
 

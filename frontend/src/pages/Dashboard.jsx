@@ -1,8 +1,247 @@
-import React from 'react'
-import {Activity,AlertTriangle,ArrowRight,ArrowUpRight,BarChart3,CarFront,CheckCircle2,Clock3,Grid2X2,MapPin,Plus,ShieldAlert,Ticket,TrendingUp,Users} from 'lucide-react'
-import {PageTitle,Card,StatCard,Status,Button,Table} from '../components/Shared'
-export default function Dashboard({spaces,sessions,alerts,go}) {
- const counts=['AVAILABLE','RESERVED','OCCUPIED','OUT_OF_SERVICE','UNKNOWN'].map(s=>[s,spaces.filter(x=>x.status===s).length])
- const total=spaces.length,occupied=spaces.filter(x=>x.status==='OCCUPIED').length
- return <><PageTitle title="Dashboard" subtitle="A clear view of today's parking operations." action={<Button icon={Plus} onClick={()=>go('/entry')}>New vehicle entry</Button>}/><div className="stats-grid"><StatCard label="Total capacity" value={total} change="Across 2 basement floors" icon={Grid2X2}/><StatCard label="Available" value={counts[0][1]} change="Ready for allocation" icon={CheckCircle2} tone="green"/><StatCard label="Reserved" value={counts[1][1]} change="Awaiting vehicle arrival" icon={Ticket} tone="amber"/><StatCard label="Occupied" value={occupied} change={`${Math.round(occupied/total*100)}% current utilization`} icon={CarFront} tone="blue"/><StatCard label="Needs attention" value={counts[3][1]+counts[4][1]+alerts.length} change="Faults, unknown & alerts" icon={ShieldAlert} tone="rose"/></div><div className="dashboard-grid"><Card title="Floor status" subtitle="Live-looking demo occupancy overview" action={<button className="text-action" onClick={()=>go('/layout')}>View layout <ArrowRight size={15}/></button>}><div className="floor-list">{['B1','B2'].map(f=>{const floor=spaces.filter(s=>s.floor===f),used=floor.filter(s=>['OCCUPIED','RESERVED'].includes(s.status)).length;return <div className="floor-row" key={f}><div className="floor-badge">{f}</div><div className="floor-info"><div><b>Basement {f.slice(1)}</b><span>{used} of {floor.length} in use</span></div><div className="progress"><i style={{width:`${used/floor.length*100}%`}}/></div></div><strong>{Math.round(used/floor.length*100)}%</strong></div>})}</div><div className="mini-legend"><span><i className="dot green"/> Available</span><span><i className="dot amber"/> Reserved</span><span><i className="dot rose"/> Occupied</span><span><i className="dot gray"/> Unknown / OOS</span></div></Card><Card title="Operational snapshot" subtitle="Today's activity"><div className="snapshot-grid"><div><span>Vehicle entries</span><b>42</b><small className="positive"><ArrowUpRight size={13}/> 12% vs yesterday</small></div><div><span>Vehicle exits</span><b>31</b><small>Across both floors</small></div><div><span>Avg. parking duration</span><b>1h 46m</b><small>Today's sessions</small></div><div><span>Allocation success</span><b>96%</b><small className="positive">Healthy trend</small></div></div></Card><Card title="Recent activity" subtitle="Latest vehicle movements" action={<button className="text-action" onClick={()=>go('/history')}>View history <ArrowRight size={15}/></button>}><Table headers={['TICKET','VEHICLE','PARKING BAY','ENTRY','STATUS']}>{sessions.slice(0,4).map(s=><tr key={s.ticket}><td><b>{s.ticket}</b></td><td>{s.vehicle}</td><td>{s.bay}</td><td>{s.entry}</td><td><Status value={s.status}/></td></tr>)}</Table></Card><Card title="Alerts & attention" subtitle="Items that may require staff action" action={<button className="text-action" onClick={()=>go('/settings')}>Alert settings <ArrowRight size={15}/></button>}><div className="alert-list">{alerts.slice(0,3).map(a=><div className="alert-row" key={a.id}><div className="alert-icon"><AlertTriangle size={18}/></div><div className="alert-copy"><b>{a.title}</b><span>{a.detail}</span></div><div className="alert-meta"><Status value={a.severity}/><small>{a.time}</small></div></div>)}</div></Card></div><div className="quick-grid"><button onClick={()=>go('/allocation')}><div className="quick-icon"><TrendingUp/></div><b>Smart allocation</b><span>Review recommended parking bays</span><ArrowRight/></button><button onClick={()=>go('/navigation')}><div className="quick-icon"><MapPin/></div><b>Mall navigation</b><span>Explore floors, zones and routes</span><ArrowRight/></button><button onClick={()=>go('/history')}><div className="quick-icon"><BarChart3/></div><b>Parking analytics</b><span>Review utilization and activity trends</span><ArrowRight/></button></div></>
+﻿import React, { useEffect, useMemo, useState } from 'react'
+import {
+  AlertTriangle, ArrowRight, ArrowUpRight, BarChart3,
+  CarFront, CheckCircle2, Grid2X2, MapPin, Plus,
+  ShieldAlert, Ticket, TrendingUp
+} from 'lucide-react'
+import { PageTitle, Card, StatCard, Status, Button, Table } from '../components/Shared'
+import { getParkingOverview, getLiveParking } from '../services/staffApi'
+
+export default function Dashboard({ go }) {
+  const [parkingLots, setParkingLots] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [lastUpdated, setLastUpdated] = useState(null)
+
+  useEffect(() => {
+    let active = true
+
+    async function loadDashboard() {
+      setLoading(true)
+      setError('')
+
+      try {
+        let data
+
+        try {
+          data = await getLiveParking()
+        } catch {
+          data = await getParkingOverview()
+        }
+
+        const lots = Array.isArray(data)
+          ? data
+          : data?.parking_lots || []
+
+        if (!active) return
+
+        setParkingLots(lots)
+        setLastUpdated(new Date())
+      } catch (err) {
+        if (active) setError(err.message || 'Unable to load parking information.')
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    loadDashboard()
+    return () => { active = false }
+  }, [])
+
+  const totals = useMemo(() => parkingLots.reduce((result, lot) => ({
+    capacity: result.capacity + (Number(lot.total_slots) || 0),
+    occupied: result.occupied + (Number(lot.occupied_slots) || 0),
+    available: result.available + (Number(lot.available_slots) || 0),
+  }), { capacity: 0, occupied: 0, available: 0 }), [parkingLots])
+
+  const utilization = totals.capacity
+    ? Math.round((totals.occupied / totals.capacity) * 100)
+    : 0
+
+  const unknown = Math.max(
+    0,
+    totals.capacity - totals.occupied - totals.available
+  )
+
+  const formatTime = lastUpdated
+    ? lastUpdated.toLocaleTimeString()
+    : 'Not updated'
+
+  return (
+    <>
+      <PageTitle
+        title="Dashboard"
+        subtitle="A clear view of today's parking operations."
+        action={
+          <Button icon={Plus} onClick={() => go('/entry')}>
+            New vehicle entry
+          </Button>
+        }
+      />
+
+      {error && (
+        <Card title="Dashboard connection">
+          <div style={{ padding: 12 }}>
+            <p>{error}</p>
+            <button className="text-action" onClick={() => window.location.reload()}>
+              Retry <ArrowRight size={15} />
+            </button>
+          </div>
+        </Card>
+      )}
+
+      <div className="stats-grid">
+        <StatCard
+          label="Total capacity"
+          value={loading ? '...' : totals.capacity}
+          change="Parking capacity reported by backend"
+          icon={Grid2X2}
+        />
+        <StatCard
+          label="Available"
+          value={loading ? '...' : totals.available}
+          change="Available slots reported by backend"
+          icon={CheckCircle2}
+          tone="green"
+        />
+        <StatCard
+          label="Reserved"
+          value="—"
+          change="Reservation summary not connected"
+          icon={Ticket}
+          tone="amber"
+        />
+        <StatCard
+          label="Occupied"
+          value={loading ? '...' : totals.occupied}
+          change={loading ? 'Loading occupancy' : `${utilization}% reported utilization`}
+          icon={CarFront}
+          tone="blue"
+        />
+        <StatCard
+          label="Unclassified"
+          value={loading ? '...' : unknown}
+          change="Capacity not classified as available or occupied"
+          icon={ShieldAlert}
+          tone="rose"
+        />
+      </div>
+
+      <div className="dashboard-grid">
+        <Card
+          title="Parking overview"
+          subtitle="Parking lot totals reported by the backend"
+          action={
+            <button className="text-action" onClick={() => go('/layout')}>
+              View layout <ArrowRight size={15} />
+            </button>
+          }
+        >
+          {loading ? (
+            <p>Loading parking information...</p>
+          ) : parkingLots.length === 0 ? (
+            <p>No parking lot information is currently available.</p>
+          ) : (
+            <div className="floor-list">
+              {parkingLots.map((lot) => {
+                const capacity = Number(lot.total_slots) || 0
+                const occupied = Number(lot.occupied_slots) || 0
+                const percent = capacity
+                  ? Math.round((occupied / capacity) * 100)
+                  : 0
+
+                return (
+                  <div className="floor-row" key={lot.id}>
+                    <div className="floor-badge">
+                      {String(lot.name || 'P').slice(0, 2)}
+                    </div>
+                    <div className="floor-info">
+                      <div>
+                        <b>{lot.name || `Parking lot ${lot.id}`}</b>
+                        <span>{occupied} of {capacity} occupied</span>
+                      </div>
+                      <div className="progress">
+                        <i style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
+                    <strong>{percent}%</strong>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="mini-legend">
+            <span><i className="dot green" /> Available</span>
+            <span><i className="dot rose" /> Occupied</span>
+            <span><i className="dot gray" /> Unclassified</span>
+          </div>
+        </Card>
+
+        <Card title="Operational snapshot" subtitle="Backend activity integration status">
+          <div className="snapshot-grid">
+            <div>
+              <span>Vehicle entries</span>
+              <b>—</b>
+              <small>Activity API not connected</small>
+            </div>
+            <div>
+              <span>Vehicle exits</span>
+              <b>—</b>
+              <small>Activity API not connected</small>
+            </div>
+            <div>
+              <span>Avg. parking duration</span>
+              <b>—</b>
+              <small>Session data unavailable</small>
+            </div>
+            <div>
+              <span>Allocation success</span>
+              <b>—</b>
+              <small>Analytics API required</small>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Recent activity" subtitle="Vehicle movement history">
+          <p>Recent activity is not connected to a confirmed backend endpoint yet.</p>
+          <button className="text-action" onClick={() => go('/history')}>
+            View history <ArrowRight size={15} />
+          </button>
+        </Card>
+
+        <Card title="Alerts & attention" subtitle="Operational incidents">
+          <p>Live incident information will appear here after incident integration.</p>
+          <button className="text-action" onClick={() => go('/mismatches')}>
+            View mismatches <ArrowRight size={15} />
+          </button>
+        </Card>
+      </div>
+
+      <div className="quick-grid">
+        <button onClick={() => go('/allocation')}>
+          <div className="quick-icon"><TrendingUp /></div>
+          <b>Smart allocation</b>
+          <span>Review recommended parking bays</span>
+          <ArrowRight />
+        </button>
+        <button onClick={() => go('/navigation')}>
+          <div className="quick-icon"><MapPin /></div>
+          <b>Mall navigation</b>
+          <span>Explore floors, zones and routes</span>
+          <ArrowRight />
+        </button>
+        <button onClick={() => go('/history')}>
+          <div className="quick-icon"><BarChart3 /></div>
+          <b>Parking analytics</b>
+          <span>Review parking activity</span>
+          <ArrowRight />
+        </button>
+      </div>
+
+      <p style={{ fontSize: 12, color: '#777', marginTop: 12 }}>
+        {loading ? 'Loading backend data...' : `Last updated: ${formatTime}`}
+      </p>
+    </>
+  )
 }
