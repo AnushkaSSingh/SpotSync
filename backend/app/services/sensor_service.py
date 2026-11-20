@@ -56,8 +56,9 @@ class SensorService:
         if sensor.parking_slot_id is not None:
             slot = db.get(ParkingSlot, sensor.parking_slot_id)
 
-        # Offline events must make the assigned slot unavailable.
-        if is_offline_event:
+        # Fault/offline/blocked readings immediately make the bay non-available.
+        # A sensor fault is not an occupancy reading and must never free a bay.
+        if is_offline_event or event_type in {"fault", "blocked", "unexpected_occupancy"}:
             self._mark_slot_unknown(slot)
 
         # Fault and offline events must never count as occupancy readings.

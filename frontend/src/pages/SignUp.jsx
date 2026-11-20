@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { apiRequest } from '../services/api'
 import {
   ArrowRight, Eye, EyeOff, LockKeyhole,
   UserRound, Mail, Phone, Zap, ShieldCheck,
@@ -16,6 +17,8 @@ export default function SignUp() {
     confirmPassword: ''
   })
 
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [message, setMessage] = useState('')
@@ -25,7 +28,7 @@ export default function SignUp() {
     setMessage('')
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
 
     if (Object.values(form).some(value => !value.trim())) {
@@ -33,8 +36,8 @@ export default function SignUp() {
       return
     }
 
-    if (form.password.length < 6) {
-      setMessage('Password must contain at least 6 characters.')
+    if (form.password.length < 8) {
+      setMessage('Password must contain at least 8 characters.')
       return
     }
 
@@ -43,7 +46,27 @@ export default function SignUp() {
       return
     }
 
-    setMessage('Registration form validated. Connect the staff registration API to create your account.')
+    setLoading(true)
+    setMessage('')
+
+    try {
+      const data = await apiRequest('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          password: form.password
+        })
+      })
+
+      setMessage(data?.message || 'Account created successfully!')
+      setTimeout(() => navigate('/login'), 1200)
+    } catch (error) {
+      setMessage(error.message || 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -390,8 +413,9 @@ export default function SignUp() {
             </div>
           )}
 
-          <button className="staff-auth-submit" type="submit">
-            Sign Up <ArrowRight size={17} />
+          <button className="staff-auth-submit" type="submit" disabled={loading}>
+            {loading ? "Creating Account..." : "Sign Up"}
+            {!loading && <ArrowRight size={17} />}
           </button>
 
           <p className="staff-auth-switch">

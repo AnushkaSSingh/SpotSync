@@ -1,4 +1,4 @@
-﻿
+
 import React, { useEffect, useState } from 'react'
 import {
   CarFront,
@@ -56,7 +56,11 @@ export default function Entry({ onCreate }) {
       ])
 
       const vehicleList = getList(vehicleResponse, 'vehicles')
-      const slotList = getList(slotResponse, 'slots')
+      const slotList = getList(slotResponse, 'slots').filter(slot => {
+        const code = String(slot.display_code || slot.slot_number || '').toUpperCase()
+        const status = String(slot.status || '').toUpperCase()
+        return code !== 'B2-A4' && status !== 'OUT_OF_SERVICE'
+      })
 
       setVehicles(vehicleList)
       setSlots(slotList)
@@ -255,7 +259,11 @@ export default function Entry({ onCreate }) {
           availableOnly: true
         })
 
-        const updatedList = getList(updatedSlots, 'slots')
+        const updatedList = getList(updatedSlots, 'slots').filter(slot => {
+          const code = String(slot.display_code || slot.slot_number || '').toUpperCase()
+          const status = String(slot.status || '').toUpperCase()
+          return code !== 'B2-A4' && status !== 'OUT_OF_SERVICE'
+        })
         setSlots(updatedList)
         setSelectedSlot(
           updatedList.length ? String(updatedList[0].id) : ''
