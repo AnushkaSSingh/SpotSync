@@ -1,210 +1,291 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  Bell, Building2, Monitor, Save, ShieldCheck,
-  SlidersHorizontal, Radio, IndianRupee, Wifi,
-  WifiOff, CheckCircle2
+  Wifi,
+  WifiOff,
+  Save,
+  CheckCircle2,
+  Sun,
+  Moon,
+  Clock
 } from 'lucide-react'
-import { PageTitle, Card, Button, Status } from '../components/Shared'
+import { Card, Button } from '../components/Shared'
 
-const inputStyle = {
+const field = {
   width: '100%',
-  padding: '11px 13px',
-  border: '1px solid #ded7ed',
-  borderRadius: '9px',
-  marginTop: '7px',
-  outlineColor: '#7545e7',
-  fontSize: '14px'
+  padding: '11px 12px',
+  border: '1px solid var(--line)',
+  borderRadius: 8,
+  marginTop: 7,
+  fontSize: 13,
+  background: 'var(--surface)',
+  color: 'var(--ink)'
 }
 
 export default function Settings() {
   const [rates, setRates] = useState({
-    first: '40',
-    extra: '30',
-    daily: '250'
-  })
-
-  const [toggles, setToggles] = useState({
-    mismatch: true,
-    sensor: true,
-    maintenance: true,
-    daily: false
+    four: '60',
+    two: '40'
   })
 
   const [saved, setSaved] = useState(false)
-  const [error, setError] = useState('')
 
-  function updateRate(key, value) {
-    setRates(prev => ({ ...prev, [key]: value }))
+  const [alerts, setAlerts] = useState({
+    mismatch: true,
+    sensor: true,
+    capacity: true,
+    daily: false,
+    reservation: true
+  })
+
+  const [appearance, setAppearance] = useState(() => {
+    return localStorage.getItem('spotsync-theme') || 'light'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', appearance)
+    localStorage.setItem('spotsync-theme', appearance)
+  }, [appearance])
+
+  const sensors = [
+    { id: 'S1', bay: 'B1-A1', status: 'Online' },
+    { id: 'S2', bay: 'B1-A2', status: 'Online' },
+    { id: 'S3', bay: 'B1-A3', status: 'Offline' },
+    { id: 'S4', bay: 'B2-A1', status: 'Online' },
+    { id: 'S5', bay: 'B2-A2', status: 'Stale' },
+    { id: 'S6', bay: 'B2-A3', status: 'Online' },
+    { id: 'S7', bay: 'B2-A4', status: 'Online' },
+    { id: 'S8', bay: 'Entrance / Ramp', status: 'Operational' }
+  ]
+
+  const toggle = (key) => {
+    setAlerts(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }))
     setSaved(false)
   }
 
-  function flip(key) {
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }))
-    setSaved(false)
-  }
-
-  function saveSettings(e) {
+  const save = (e) => {
     e.preventDefault()
-
-    const values = Object.values(rates).map(Number)
-
-    if (values.some(value => !Number.isFinite(value) || value < 0 || value === 0)) {
-      setError('Please enter valid positive parking rates.')
-      setSaved(false)
-      return
-    }
-
-    setError('')
     setSaved(true)
   }
 
   return (
-    <>
-      <PageTitle
-        title="Settings"
-        subtitle="Manage parking rates, sensors, notifications and staff preferences."
-      />
+    <div className="pdf-page">
 
-      <div className="settings-grid">
+      <div className="settings-heading">
+        <div>
+          <span className="eyebrow">STAFF STF-2041 · ADMIN</span>
+          <h1>Make it yours</h1>
+          <p>Rates, sensors and alerts for this car park.</p>
+        </div>
 
-        <Card title="Parking rates" subtitle="Demo pricing configuration">
-          <form onSubmit={saveSettings}>
-            {[
-              ['first', 'First hour rate (₹)'],
-              ['extra', 'Each extra hour (₹)'],
-              ['daily', 'Daily maximum cap (₹)']
-            ].map(([key, label]) => (
-              <label key={key} style={{ display: 'block', marginBottom: 17 }}>
-                <b>{label}</b>
+        <Button
+          icon={Save}
+          onClick={() => setSaved(true)}
+        >
+          Save changes
+        </Button>
+      </div>
+
+      {/* THREE INDEPENDENT COLUMNS */}
+      <div
+        className="pdf-settings-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: '16px',
+          alignItems: 'start'
+        }}
+      >
+
+        {/* LEFT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+
+          <Card
+            title="Parking rates"
+            subtitle="Set the hourly rate by vehicle type"
+          >
+            <form onSubmit={save}>
+              <label className="pdf-field">
+                4-wheeler · per hour (₹)
                 <input
+                  style={field}
                   type="number"
                   min="1"
-                  value={rates[key]}
-                  onChange={e => updateRate(key, e.target.value)}
-                  style={inputStyle}
-                  required
+                  value={rates.four}
+                  onChange={e =>
+                    setRates(prev => ({
+                      ...prev,
+                      four: e.target.value
+                    }))
+                  }
                 />
               </label>
-            ))}
 
-            <div className="settings-foot">
-              <IndianRupee size={17} />
-              First hour ₹{rates.first || 0} · Extra hour ₹{rates.extra || 0}
-              · Daily cap ₹{rates.daily || 0}
-            </div>
+              <label className="pdf-field">
+                2-wheeler · per hour (₹)
+                <input
+                  style={field}
+                  type="number"
+                  min="1"
+                  value={rates.two}
+                  onChange={e =>
+                    setRates(prev => ({
+                      ...prev,
+                      two: e.target.value
+                    }))
+                  }
+                />
+              </label>
 
-            <Button type="submit" icon={Save}>Save settings</Button>
-          </form>
-        </Card>
+              <Button type="submit" icon={Save}>
+                Save rates
+              </Button>
+            </form>
+          </Card>
 
-        <Card title="Slots & sensor health" subtitle="Configured demo sensor status">
-          {[
-            ['S1', 'B1-A1', 'Online', true],
-            ['S2', 'B1-A2', 'Online', true],
-            ['S3', 'B1-A3', 'Offline', false],
-            ['S4', 'B2-A1', 'Online', true]
-          ].map(([sensor, bay, status, online]) => (
-            <div className="settings-row" key={sensor}>
-              <div className="settings-icon">
-                {online ? <Wifi /> : <WifiOff />}
-              </div>
+          <Card
+            title="Staff access"
+            subtitle="Accounts and permissions"
+          >
+            <div className="pdf-staff-row">
+              <div className="pdf-person">ST</div>
               <div>
-                <b>{sensor} → {bay}</b>
-                <span>{online ? 'Demo sensor connected' : 'Connection unavailable in demo'}</span>
+                <b>Staff 2041 (STF-2041)</b>
+                <span>Admin · full access</span>
               </div>
-              <span style={{
-                color: online ? '#16834b' : '#d04455',
-                fontWeight: 700,
-                fontSize: 12
-              }}>
-                {status}
-              </span>
+              <strong>Admin</strong>
             </div>
-          ))}
-          <p className="settings-foot">
-            <Radio size={16} />
-            Sensor readings are sample data, not live hardware readings.
-          </p>
-        </Card>
 
-        <Card title="Notification preferences" subtitle="Choose which alerts you want displayed">
-          <div className="toggle-list">
-            {[
-              ['mismatch', 'Parking mismatch alerts', 'Vehicle detected in a different bay'],
-              ['sensor', 'Sensor offline alerts', 'Sensor disconnected or unreliable'],
-              ['maintenance', 'Maintenance alerts', 'Parking space out of service'],
-              ['daily', 'Daily activity summary', 'Daily parking operations summary']
-            ].map(([key, title, desc]) => (
-              <div className="toggle-row" key={key}>
-                <div>
-                  <b>{title}</b>
-                  <span>{desc}</span>
+            <div className="pdf-staff-row">
+              <div className="pdf-person">ST</div>
+              <div>
+                <b>Staff 2045 (STF-2045)</b>
+                <span>Entry & exit only</span>
+              </div>
+              <strong>Staff</strong>
+            </div>
+          </Card>
+
+        </div>
+
+        {/* MIDDLE COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+
+          <Card
+            title="Sensor health · 8 linked"
+            subtitle="Connection status for parking bays and entrance"
+          >
+            {sensors.map(sensor => (
+              <div className="pdf-sensor-row" key={sensor.id}>
+                <div className="pdf-sensor-icon">
+                  {sensor.status === 'Offline'
+                    ? <WifiOff />
+                    : sensor.status === 'Stale'
+                      ? <Clock />
+                      : <Wifi />
+                  }
                 </div>
+
+                <b>{sensor.id} · {sensor.bay}</b>
+
+                <span
+                  className={
+                    sensor.status === 'Offline'
+                      ? 'offline'
+                      : sensor.status === 'Stale'
+                        ? 'stale'
+                        : 'online'
+                  }
+                >
+                  {sensor.status}
+                </span>
+              </div>
+            ))}
+          </Card>
+
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+
+          <Card
+            title="Notification alerts"
+            subtitle="Choose which events should notify staff"
+          >
+            {[
+              ['mismatch', 'Mismatch alerts'],
+              ['sensor', 'Sensor offline alerts'],
+              ['capacity', 'Capacity alerts'],
+              ['daily', 'Daily summary (9 PM)'],
+              ['reservation', 'Reservation alerts']
+            ].map(([key, label]) => (
+              <div className="pdf-toggle-row" key={key}>
+                <span>{label}</span>
+
                 <button
                   type="button"
-                  className={'switch ' + (toggles[key] ? 'on' : '')}
-                  onClick={() => flip(key)}
-                  aria-label={`Toggle ${title}`}
-                  aria-pressed={toggles[key]}
+                  className={'switch ' + (alerts[key] ? 'on' : '')}
+                  onClick={() => toggle(key)}
+                  aria-pressed={alerts[key]}
                 >
                   <i />
                 </button>
               </div>
             ))}
-          </div>
-          <Button icon={Bell} onClick={() => setSaved(true)}>
-            Save preferences
-          </Button>
-        </Card>
+          </Card>
 
-        <Card title="Staff access" subtitle="Current staff account information">
-          <div className="settings-row">
-            <div className="settings-icon"><ShieldCheck /></div>
-            <div>
-              <b>Staff ID</b>
-              <span>STF-2041</span>
+          <Card
+            title="Appearance"
+            subtitle="Choose the staff console theme"
+          >
+            <div className="appearance-options">
+              <button
+                type="button"
+                className={
+                  'theme-choice ' +
+                  (appearance === 'light' ? 'chosen' : '')
+                }
+                onClick={() => setAppearance('light')}
+                aria-pressed={appearance === 'light'}
+              >
+                <Sun />
+                Light Mode
+              </button>
+
+              <button
+                type="button"
+                className={
+                  'theme-choice ' +
+                  (appearance === 'dark' ? 'chosen' : '')
+                }
+                onClick={() => setAppearance('dark')}
+                aria-pressed={appearance === 'dark'}
+              >
+                <Moon />
+                Dark Mode
+              </button>
             </div>
-            <span className="setting-value">Active</span>
-          </div>
 
-          <div className="settings-row">
-            <div className="settings-icon"><Building2 /></div>
-            <div>
-              <b>Role</b>
-              <span>Parking Supervisor</span>
-            </div>
-            <span className="setting-value">Staff</span>
-          </div>
+            <p className="theme-description">
+              {appearance === 'dark'
+                ? 'Dark appearance is active across the staff console.'
+                : 'Light appearance is active across the staff console.'
+              }
+            </p>
+          </Card>
 
-          <div className="settings-row">
-            <div className="settings-icon"><Monitor /></div>
-            <div>
-              <b>Appearance</b>
-              <span>Light interface · Purple theme</span>
-            </div>
-            <span className="setting-value">Default</span>
-          </div>
-
-          <p className="settings-foot">
-            <ShieldCheck size={16} />
-            Account permissions are displayed for demonstration.
-          </p>
-        </Card>
+        </div>
       </div>
-
-      {error && <p style={{ color: '#d04455', marginTop: 15 }}>{error}</p>}
 
       {saved && (
         <p className="success-note">
-          <CheckCircle2 size={16} /> Changes saved for this browser session only.
-          No backend settings have been modified.
+          <CheckCircle2 size={15} />
+          Settings saved for this browser session.
         </p>
       )}
 
-      <div className="settings-foot">
-        <SlidersHorizontal size={17} />
-        Demo settings · Changes are not yet connected to the backend.
-      </div>
-    </>
+    </div>
   )
 }

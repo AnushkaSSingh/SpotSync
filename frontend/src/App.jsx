@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import {
   BrowserRouter,
   useLocation,
@@ -7,9 +7,13 @@ import {
 } from 'react-router-dom'
 
 import { initialAlerts, initialSessions, initialSpaces } from './data/mockData'
+import { SpotSyncProvider } from './context/SpotSyncContext'
 import { Shell } from './components/Shared'
 
+import Landing from './pages/Landing'
+import SignUp from './pages/SignUp'
 import Login from './pages/Login'
+
 import StaffDashboard from './pages/StaffDashboard'
 import Entry from './pages/Entry'
 import Layout from './pages/Layout'
@@ -21,7 +25,9 @@ import History from './pages/History'
 import Navigation from './pages/Navigation'
 import Settings from './pages/Settings'
 import SystemHealth from './pages/SystemHealth'
+import Sensors from './pages/Sensors'
 import Mismatches from './pages/Mismatches'
+import Notifications from './pages/Notifications'
 
 function Workspace() {
   const [authenticated, setAuthenticated] = useState(false)
@@ -34,9 +40,27 @@ function Workspace() {
   const go = path => navigate(path)
   const path = location.pathname
 
+  if (path === '/') return <Landing />
+  if (path === '/signup') return <SignUp />
+
+  if (path === '/login') {
+    return (
+      <Login
+        onLogin={() => {
+          setAuthenticated(true)
+          navigate('/dashboard')
+        }}
+      />
+    )
+  }
+
+  if (!authenticated) {
+    return <Navigate to="/login" replace />
+  }
+
   function createSession(item) {
-    setSessions(prev => [item, ...prev])
-    setSpaces(prev => prev.map(space =>
+    setSessions(previous => [item, ...previous])
+    setSpaces(previous => previous.map(space =>
       space.id === item.bay
         ? { ...space, status: 'RESERVED' }
         : space
@@ -44,31 +68,22 @@ function Workspace() {
   }
 
   function processExit(ticket) {
-    const session = sessions.find(s => s.ticket === ticket)
+    const session = sessions.find(item => item.ticket === ticket)
     if (!session) return
 
-    setSessions(prev => prev.filter(s => s.ticket !== ticket))
-    setSpaces(prev => prev.map(space =>
+    setSessions(previous => previous.filter(item => item.ticket !== ticket))
+    setSpaces(previous => previous.map(space =>
       space.id === session.bay
         ? { ...space, status: 'AVAILABLE', vehicle: '' }
         : space
     ))
   }
 
-  if (path === '/login' || !authenticated) {
-    return (
-      <Login onLogin={() => {
-        setAuthenticated(true)
-        navigate('/dashboard')
-      }} />
-    )
-  }
-
   let page
 
   switch (path) {
     case '/dashboard':
-      page = <StaffDashboard />
+      page = <StaffDashboard spaces={spaces} sessions={sessions} alerts={alerts} />
       break
     case '/entry':
       page = <Entry spaces={spaces} onCreate={createSession} />
@@ -100,8 +115,14 @@ function Workspace() {
     case '/mismatches':
       page = <Mismatches />
       break
+    case '/sensors':
+      page = <Sensors />
+      break
     case '/system-health':
       page = <SystemHealth />
+      break
+    case '/notifications':
+      page = <Notifications />
       break
     default:
       return <Navigate to="/dashboard" replace />
@@ -123,8 +144,10 @@ function Workspace() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Workspace />
-    </BrowserRouter>
+    <SpotSyncProvider>
+      <BrowserRouter>
+        <Workspace />
+      </BrowserRouter>
+    </SpotSyncProvider>
   )
 }

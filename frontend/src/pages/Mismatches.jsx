@@ -1,114 +1,275 @@
-import React, { useState } from 'react'
-import { AlertTriangle, CheckCircle2, Clock, Search } from 'lucide-react'
-import { PageTitle, Card, Button, Status } from '../components/Shared'
+import React, { useMemo, useState } from 'react'
+import { useSpotSync } from '../context/SpotSyncContext'
 
-const initialData = [
-  { id: 'MM-1021', vehicle: 'UP16 AB 2345', expected: 'B1-A04', detected: 'B1-A07', time: '10:42 AM', severity: 'High', resolved: false },
-  { id: 'MM-1022', vehicle: 'DL8C XY 7821', expected: 'B2-A03', detected: 'B2-A05', time: '11:15 AM', severity: 'Medium', resolved: false },
-  { id: 'MM-1023', vehicle: 'UP14 CD 4567', expected: 'B1-B02', detected: 'B1-B02', time: '11:38 AM', severity: 'Low', resolved: true }
-]
+const priorityColors = {
+  High: '#d04444',
+  Medium: '#c18419',
+  Low: '#16845b',
+}
+
+const statusColors = {
+  Pending: '#c18419',
+  Investigating: '#60449a',
+  Resolved: '#16845b',
+}
 
 export default function Mismatches() {
-  const [items, setItems] = useState(initialData)
-  const [search, setSearch] = useState('')
+  const { mismatches: items, updateMismatchStatus } = useSpotSync()
+
   const [filter, setFilter] = useState('All')
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState(null)
 
-  const filtered = items.filter(item =>
-    (filter === 'All' || (filter === 'Open' ? !item.resolved : item.resolved)) &&
-    `${item.id} ${item.vehicle} ${item.expected} ${item.detected}`
-      .toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = useMemo(() => items.filter(item => {
+    const matchesStatus = filter === 'All' || item.status === filter
+    const matchesSearch =
+      `${item.id} ${item.space} ${item.sensor} ${item.type}`
+        .toLowerCase()
+        .includes(search.toLowerCase())
 
-  const resolve = id => {
-    setItems(prev => prev.map(item =>
-      item.id === id ? { ...item, resolved: true } : item
-    ))
+    return matchesStatus && matchesSearch
+  }), [items, filter, search])
+
+  const pending = items.filter(item => item.status === 'Pending').length
+  const investigating = items.filter(item => item.status === 'Investigating').length
+  const resolved = items.filter(item => item.status === 'Resolved').length
+
+  const currentSelected = items.find(item => item.id === selected?.id)
+
+  const cardStyle = {
+    background: '#fff',
+    border: '1px solid #ece8f2',
+    borderRadius: 12,
+    padding: 18,
+    boxShadow: '0 2px 8px rgba(30,20,50,0.03)',
   }
 
-  const openCount = items.filter(item => !item.resolved).length
-  const resolvedCount = items.filter(item => item.resolved).length
+  const buttonStyle = {
+    border: 0,
+    borderRadius: 7,
+    padding: '9px 13px',
+    cursor: 'pointer',
+    fontWeight: 600,
+  }
 
   return (
-    <>
-      <PageTitle
-        title="Mismatch Management"
-        subtitle="Monitor vehicle-to-slot mismatches and manage corrective actions."
-      />
+    <div style={{ padding: 24, color: '#292238', maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 15,
+        marginBottom: 22,
+      }}>
+        <div>
+          <h1 style={{ fontSize: 25, margin: 0 }}>Mismatch Management</h1>
+          <p style={{ color: '#777184', marginTop: 7 }}>
+            Review and manage parking occupancy discrepancies.
+          </p>
+        </div>
 
-      <div className="stats-grid">
-        <Card title="Total mismatches">
-          <h2>{items.length}</h2>
-        </Card>
-        <Card title="Open mismatches">
-          <h2>{openCount}</h2>
-        </Card>
-        <Card title="Resolved">
-          <h2>{resolvedCount}</h2>
-        </Card>
+        <span style={{
+          background: '#f1edfa',
+          color: '#60449a',
+          padding: '9px 13px',
+          borderRadius: 8,
+          fontSize: 12,
+          fontWeight: 600,
+        }}>
+          DEMO DATA · NOT LIVE
+        </span>
       </div>
 
-      <Card title="Detected mismatches" subtitle="Sample monitoring records">
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-          <div style={{ position: 'relative', flex: '1 1 220px' }}>
-            <Search size={17} style={{ position: 'absolute', left: 12, top: 13 }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search vehicle, bay or ID..."
-              style={{ padding: '11px 12px 11px 38px', width: '100%', border: '1px solid #ded7ed', borderRadius: 9 }}
-            />
-          </div>
-
-          {['All', 'Open', 'Resolved'].map(value => (
-            <Button
-              key={value}
-              variant={filter === value ? 'primary' : 'secondary'}
-              onClick={() => setFilter(value)}
-            >
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))',
+        gap: 14,
+        marginBottom: 22,
+      }}>
+        {[
+          ['Total Mismatches', items.length, '#60449a'],
+          ['Pending', pending, '#c18419'],
+          ['Investigating', investigating, '#60449a'],
+          ['Resolved', resolved, '#16845b'],
+        ].map(([label, value, color]) => (
+          <div key={label} style={cardStyle}>
+            <div style={{ color: '#777184', fontSize: 13 }}>{label}</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color, marginTop: 8 }}>
               {value}
-            </Button>
-          ))}
-        </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr>
-                {['Alert ID', 'Vehicle', 'Expected bay', 'Detected bay', 'Time', 'Severity', 'Status', 'Action'].map(h => (
-                  <th key={h} style={{ padding: 12, borderBottom: '1px solid #eee', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(item => (
-                <tr key={item.id}>
-                  <td style={{ padding: 12 }}>{item.id}</td>
-                  <td style={{ padding: 12 }}>{item.vehicle}</td>
-                  <td style={{ padding: 12 }}>{item.expected}</td>
-                  <td style={{ padding: 12 }}>{item.detected}</td>
-                  <td style={{ padding: 12, whiteSpace: 'nowrap' }}>{item.time}</td>
-                  <td style={{ padding: 12 }}>{item.severity}</td>
-                  <td style={{ padding: 12 }}>
-                    <Status value={item.resolved ? 'Resolved' : 'Open'} />
-                  </td>
-                  <td style={{ padding: 12 }}>
-                    {item.resolved
-                      ? <CheckCircle2 size={19} color="green" />
-                      : <Button onClick={() => resolve(item.id)}>Resolve</Button>}
-                  </td>
-                </tr>
+      <div style={{ ...cardStyle, marginBottom: 18 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search mismatch, space or sensor..."
+            style={{
+              flex: '1 1 240px',
+              minWidth: 0,
+              padding: 11,
+              border: '1px solid #ddd7e8',
+              borderRadius: 8,
+            }}
+          />
+
+          <select
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            style={{
+              padding: 11,
+              border: '1px solid #ddd7e8',
+              borderRadius: 8,
+              background: '#fff',
+              minWidth: 160,
+            }}
+          >
+            {['All', 'Pending', 'Investigating', 'Resolved'].map(status => (
+              <option key={status}>{status}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, overflowX: 'auto' }}>
+        <h2 style={{ fontSize: 17, margin: '0 0 16px' }}>Mismatch Records</h2>
+
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          minWidth: 900,
+          textAlign: 'left',
+        }}>
+          <thead>
+            <tr style={{ background: '#f8f6fb', color: '#777184', fontSize: 12 }}>
+              {['Mismatch ID', 'Parking Space', 'Sensor', 'Expected', 'Detected', 'Priority', 'Status', 'Action'].map(label => (
+                <th key={label} style={{ padding: 13 }}>{label}</th>
               ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan="8" style={{ padding: 25, textAlign: 'center' }}>No mismatches found.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+            </tr>
+          </thead>
 
-      <p style={{ color: '#777', fontSize: 13, marginTop: 14 }}>
-        <AlertTriangle size={14} style={{ verticalAlign: 'middle' }} /> Demo records only. Live sensor integration is not connected.
-      </p>
-    </>
+          <tbody>
+            {filtered.map(item => (
+              <tr key={item.id} style={{ borderBottom: '1px solid #eeeaf3', fontSize: 13 }}>
+                <td style={{ padding: 14, fontWeight: 700 }}>{item.id}</td>
+                <td style={{ padding: 14 }}>{item.space}</td>
+                <td style={{ padding: 14 }}>{item.sensor}</td>
+                <td style={{ padding: 14 }}>{item.expected}</td>
+                <td style={{ padding: 14 }}>{item.detected}</td>
+                <td style={{ padding: 14 }}>
+                  <span style={{
+                    color: priorityColors[item.priority],
+                    background: `${priorityColors[item.priority]}15`,
+                    padding: '5px 9px',
+                    borderRadius: 20,
+                    fontWeight: 600,
+                  }}>
+                    {item.priority}
+                  </span>
+                </td>
+                <td style={{ padding: 14 }}>
+                  <span style={{
+                    color: statusColors[item.status],
+                    background: `${statusColors[item.status]}15`,
+                    padding: '5px 9px',
+                    borderRadius: 20,
+                    fontWeight: 600,
+                  }}>
+                    {item.status}
+                  </span>
+                </td>
+                <td style={{ padding: 14 }}>
+                  <button
+                    onClick={() => setSelected(item)}
+                    style={{ ...buttonStyle, background: '#f1edfa', color: '#60449a' }}
+                  >
+                    Review
+                  </button>
+                </td>
+              </tr>
+            ))}
+
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan="8" style={{ padding: 25, textAlign: 'center', color: '#777184' }}>
+                  No mismatch records found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {currentSelected && (
+        <div
+          onClick={() => setSelected(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: '#17102080',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 18,
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              ...cardStyle,
+              width: 'min(460px,100%)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <h2 style={{ margin: 0, fontSize: 19 }}>{currentSelected.id} Details</h2>
+              <button onClick={() => setSelected(null)} aria-label="Close details">×</button>
+            </div>
+
+            <div style={{ lineHeight: 2.2, fontSize: 14, marginTop: 15 }}>
+              <div><b>Parking space:</b> {currentSelected.space}</div>
+              <div><b>Sensor:</b> {currentSelected.sensor}</div>
+              <div><b>Mismatch type:</b> {currentSelected.type}</div>
+              <div><b>Expected status:</b> {currentSelected.expected}</div>
+              <div><b>Detected status:</b> {currentSelected.detected}</div>
+              <div><b>Priority:</b> {currentSelected.priority}</div>
+              <div><b>Reported at:</b> {currentSelected.time}</div>
+              <div><b>Current status:</b> {currentSelected.status}</div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #eeeaf3', marginTop: 16, paddingTop: 16 }}>
+              <p style={{ fontWeight: 600, fontSize: 14 }}>Update investigation status</p>
+
+              <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+                {['Pending', 'Investigating', 'Resolved'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => updateMismatchStatus(currentSelected.id, status)}
+                    disabled={currentSelected.status === status}
+                    style={{
+                      ...buttonStyle,
+                      background: currentSelected.status === status ? '#e8e3ef' : statusColors[status],
+                      color: currentSelected.status === status ? '#777184' : '#fff',
+                    }}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+
+              <p style={{ fontSize: 12, color: '#8a8295', marginTop: 15 }}>
+                Demo action only. This updates the shared displayed status locally.
+                It does not verify or correct a physical parking sensor.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

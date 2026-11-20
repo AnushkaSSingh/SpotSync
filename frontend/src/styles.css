@@ -4,3 +4,567 @@
 @media(max-width:1200px){.sidebar{width:215px}.main-shell{margin-left:215px}.stats-grid{grid-template-columns:repeat(3,1fr)}.dashboard-grid{grid-template-columns:1fr}.main-content{padding:25px 22px}.topbar{padding:0 22px}}
 @media(max-width:850px){.sidebar{position:static;width:100%;height:auto;padding:13px 15px}.sidebar .brand{padding:0 5px 12px}.sidebar .side-label,.sidebar-bottom{display:none}.sidebar nav{display:flex;overflow-x:auto;padding-bottom:2px}.nav-link{flex:0 0 auto;padding:10px}.nav-link span{white-space:nowrap}.main-shell{margin-left:0}.topbar{height:60px}.app-shell{display:flex;flex-direction:column}.main-content{padding:22px 16px}.topbar-left{display:none}.topbar{justify-content:flex-end}.two-col,.active-grid,.navigation-grid,.layout-content,.settings-grid{grid-template-columns:1fr}.detail-card{position:static}.login-page{grid-template-columns:1fr}.login-visual{min-height:440px}.login-panel{min-height:450px}.login-copy h1{font-size:55px}.login-highlights{margin-top:35px}}
 @media(max-width:560px){.stats-grid{grid-template-columns:repeat(2,1fr)}.stats-grid .stat-card:last-child{grid-column:span 2}.page-title{align-items:flex-start;flex-direction:column}.page-title h1{font-size:25px}.quick-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.span-2{grid-column:span 1}.space-grid{grid-template-columns:repeat(2,1fr)}.layout-toolbar{align-items:flex-start;flex-direction:column}.consideration-grid{grid-template-columns:repeat(2,1fr)}.snapshot-grid{gap:14px}.topbar-right{gap:7px}.staff-meta,.topbar-right>svg{display:none}.logout-link{margin-left:0}.login-card{padding:27px 22px}.login-highlights{gap:10px;flex-wrap:wrap}.login-highlights>div{padding-right:10px}.login-visual{padding:25px 7%}.map-canvas{padding:12px}.map-space{font-size:8px}.search-row{flex-direction:column}.search-box{max-width:none}.compact-stats{grid-template-columns:1fr 1fr}.compact-stats .stat-card:last-child{grid-column:span 2}}
+
+/* =====================================================
+   SPOTSYNC GLOBAL THEME
+   Applies to all staff console pages
+===================================================== */
+
+/* LIGHT THEME */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #21183d;
+  --muted: #817b96;
+  --line: #e8e3f1;
+  --surface: #ffffff;
+  --page: #f7f5fc;
+  --input-bg: #ffffff;
+  --table-head: #f7f5fb;
+  --hover-bg: #f5f0ff;
+}
+
+/* DARK THEME */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #eee9f8;
+  --muted: #aaa0bd;
+  --line: #403451;
+  --surface: #251d33;
+  --page: #171220;
+  --input-bg: #30263d;
+  --table-head: #30263d;
+  --hover-bg: #342843;
+}
+
+/* GLOBAL BACKGROUNDS */
+
+body,
+.app-shell,
+.main-shell,
+.main-content {
+  background: var(--page);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .app-shell,
+:root[data-theme="dark"] .main-shell,
+:root[data-theme="dark"] .main-content,
+:root[data-theme="dark"] .pdf-page {
+  background: var(--page) !important;
+  color: var(--ink) !important;
+}
+
+/* TOPBAR */
+
+:root[data-theme="dark"] .topbar {
+  background: #211a2d !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .topbar-left,
+:root[data-theme="dark"] .staff-meta,
+:root[data-theme="dark"] .staff-meta b {
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .staff-meta small {
+  color: var(--muted) !important;
+}
+
+:root[data-theme="dark"] .icon-button,
+:root[data-theme="dark"] .logout-link {
+  background: #302640 !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+/* CARDS AND PANELS */
+
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .stat-card,
+:root[data-theme="dark"] .dashboard-panel,
+:root[data-theme="dark"] .dashboard-stat-card:not(:first-child),
+:root[data-theme="dark"] .pdf-mini-stat,
+:root[data-theme="dark"] .quick-grid button,
+:root[data-theme="dark"] .login-card {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .card-head h3,
+:root[data-theme="dark"] .dashboard-section-heading h2,
+:root[data-theme="dark"] .dashboard-stat-card h2,
+:root[data-theme="dark"] .page-title h1,
+:root[data-theme="dark"] .pdf-page h1,
+:root[data-theme="dark"] .pdf-page h2,
+:root[data-theme="dark"] .pdf-page h3,
+:root[data-theme="dark"] .pdf-page b,
+:root[data-theme="dark"] .pdf-page strong,
+:root[data-theme="dark"] .quick-grid b {
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .card-head p,
+:root[data-theme="dark"] .page-title p,
+:root[data-theme="dark"] .dashboard-section-heading p,
+:root[data-theme="dark"] .dashboard-stat-card p,
+:root[data-theme="dark"] .muted,
+:root[data-theme="dark"] .empty-state {
+  color: var(--muted) !important;
+}
+
+/* PURPLE DASHBOARD HIGHLIGHT */
+
+:root[data-theme="dark"] .dashboard-stat-card:first-child {
+  background: #5524b7 !important;
+  color: #ffffff !important;
+}
+
+/* TABLES */
+
+:root[data-theme="dark"] th {
+  background: var(--table-head) !important;
+  color: #c5b9d8 !important;
+  border-color: var(--line) !important;
+}
+
+:root[data-theme="dark"] td {
+  color: #ded6eb !important;
+  border-color: var(--line) !important;
+}
+
+:root[data-theme="dark"] td b {
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] tbody tr:hover,
+:root[data-theme="dark"] tbody tr[onclick]:hover,
+:root[data-theme="dark"] .row-selected {
+  background: var(--hover-bg) !important;
+}
+
+/* INPUTS */
+
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] .search-box {
+  background: var(--input-bg) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+:root[data-theme="dark"] input::placeholder {
+  color: var(--muted) !important;
+}
+
+:root[data-theme="dark"] .search-box input {
+  background: transparent !important;
+}
+
+/* GENERAL PANELS */
+
+:root[data-theme="dark"] .info-note,
+:root[data-theme="dark"] .allocation-intro,
+:root[data-theme="dark"] .route-destination,
+:root[data-theme="dark"] .duration-box,
+:root[data-theme="dark"] .consideration-grid > div,
+:root[data-theme="dark"] .history-tabs button {
+  background: #30263d !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+:root[data-theme="dark"] .history-tabs button.selected {
+  background: #5928bd !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .segmented {
+  background: #30263d !important;
+}
+
+:root[data-theme="dark"] .segmented button {
+  color: var(--muted) !important;
+}
+
+:root[data-theme="dark"] .segmented button.selected {
+  background: #49316d !important;
+  color: #ffffff !important;
+}
+
+/* SETTINGS */
+
+:root[data-theme="dark"] .pdf-sensor-row,
+:root[data-theme="dark"] .pdf-staff-row,
+:root[data-theme="dark"] .pdf-toggle-row,
+:root[data-theme="dark"] .settings-row,
+:root[data-theme="dark"] .toggle-row {
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .pdf-sensor-row b,
+:root[data-theme="dark"] .pdf-staff-row b,
+:root[data-theme="dark"] .pdf-toggle-row span,
+:root[data-theme="dark"] .settings-row b,
+:root[data-theme="dark"] .toggle-row b {
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .pdf-sensor-row span,
+:root[data-theme="dark"] .pdf-staff-row span,
+:root[data-theme="dark"] .settings-row span,
+:root[data-theme="dark"] .toggle-row span {
+  color: var(--muted) !important;
+}
+
+:root[data-theme="dark"] .pdf-person,
+:root[data-theme="dark"] .pdf-sensor-icon,
+:root[data-theme="dark"] .settings-icon {
+  background: #3b2c52 !important;
+  color: #c6aaff !important;
+}
+
+:root[data-theme="dark"] .appearance-options button,
+:root[data-theme="dark"] .theme-choice {
+  background: #30263d !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+}
+
+:root[data-theme="dark"] .appearance-options button.chosen,
+:root[data-theme="dark"] .theme-choice.chosen {
+  background: #49316d !important;
+  border-color: #9569e8 !important;
+  color: #ffffff !important;
+}
+
+/* PROFILE DROPDOWN AND MODAL */
+
+:root[data-theme="dark"] .staff-profile-trigger:hover {
+  background: #30263d !important;
+}
+
+:root[data-theme="dark"] .staff-profile-dropdown,
+:root[data-theme="dark"] .staff-profile-modal {
+  background: var(--surface) !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .profile-dropdown-heading {
+  border-color: var(--line) !important;
+}
+
+:root[data-theme="dark"] .profile-dropdown-heading b,
+:root[data-theme="dark"] .staff-profile-modal-header h2,
+:root[data-theme="dark"] .staff-profile-main h3,
+:root[data-theme="dark"] .staff-profile-details strong {
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .profile-dropdown-heading small,
+:root[data-theme="dark"] .staff-profile-main p,
+:root[data-theme="dark"] .staff-profile-details span {
+  color: var(--muted) !important;
+}
+
+:root[data-theme="dark"] .profile-dropdown-item {
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .profile-dropdown-item:hover,
+:root[data-theme="dark"] .staff-profile-modal-header button {
+  background: #30263d !important;
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .staff-profile-details,
+:root[data-theme="dark"] .staff-profile-details div {
+  border-color: var(--line) !important;
+}
+
+/* SIDEBAR REMAINS PURPLE */
+
+.sidebar {
+  background: linear-gradient(160deg, #211638, #1a1230);
+}
+
+/* =====================================================
+   PARKING STATUS COLORS
+   SAME SHADES IN LIGHT AND DARK MODE
+===================================================== */
+
+/* AVAILABLE = GREEN */
+
+.status-available,
+.dashboard-bay.available,
+.space-tile.available,
+.map-space.available {
+  background: #e2f6ed !important;
+  color: #17845a !important;
+  border-color: #d3efe3 !important;
+}
+
+/* OCCUPIED = RED */
+
+.status-occupied,
+.dashboard-bay.occupied,
+.space-tile.occupied,
+.map-space.occupied {
+  background: #ffeaec !important;
+  color: #c43f4c !important;
+  border-color: #f5d8dc !important;
+}
+
+/* RESERVED = YELLOW */
+
+.status-reserved,
+.dashboard-bay.reserved,
+.space-tile.reserved,
+.map-space.reserved {
+  background: #fff2d8 !important;
+  color: #a66d0a !important;
+  border-color: #f7e8c9 !important;
+}
+
+/* NEEDS ATTENTION = PURPLE */
+
+.status-unknown,
+.status-out_of_service,
+.status-mismatch,
+.dashboard-bay.unknown,
+.space-tile.unknown,
+.space-tile.out_of_service,
+.map-space.unknown,
+.map-space.out_of_service {
+  background: #eee7fc !important;
+  color: #6335bc !important;
+  border-color: #e1d5f7 !important;
+}
+
+/* KEEP PARKING COLORS IDENTICAL IN DARK MODE */
+
+:root[data-theme="dark"] .status-available,
+:root[data-theme="dark"] .dashboard-bay.available,
+:root[data-theme="dark"] .space-tile.available,
+:root[data-theme="dark"] .map-space.available {
+  background: #e2f6ed !important;
+  color: #17845a !important;
+  border-color: #d3efe3 !important;
+}
+
+:root[data-theme="dark"] .status-occupied,
+:root[data-theme="dark"] .dashboard-bay.occupied,
+:root[data-theme="dark"] .space-tile.occupied,
+:root[data-theme="dark"] .map-space.occupied {
+  background: #ffeaec !important;
+  color: #c43f4c !important;
+  border-color: #f5d8dc !important;
+}
+
+:root[data-theme="dark"] .status-reserved,
+:root[data-theme="dark"] .dashboard-bay.reserved,
+:root[data-theme="dark"] .space-tile.reserved,
+:root[data-theme="dark"] .map-space.reserved {
+  background: #fff2d8 !important;
+  color: #a66d0a !important;
+  border-color: #f7e8c9 !important;
+}
+
+:root[data-theme="dark"] .status-unknown,
+:root[data-theme="dark"] .status-out_of_service,
+:root[data-theme="dark"] .status-mismatch,
+:root[data-theme="dark"] .dashboard-bay.unknown,
+:root[data-theme="dark"] .space-tile.unknown,
+:root[data-theme="dark"] .space-tile.out_of_service,
+:root[data-theme="dark"] .map-space.unknown,
+:root[data-theme="dark"] .map-space.out_of_service {
+  background: #eee7fc !important;
+  color: #6335bc !important;
+  border-color: #e1d5f7 !important;
+}
+
+/* THEME TRANSITIONS */
+
+body,
+.card,
+.stat-card,
+.topbar,
+.main-content,
+.pdf-page,
+input,
+select,
+textarea {
+  transition:
+    background-color .2s ease,
+    color .2s ease,
+    border-color .2s ease;
+}
+/* ==========================================
+   SPOTSYNC PAGE SCROLL MANAGEMENT
+========================================== */
+
+/* Desktop */
+@media (min-width: 701px) {
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    min-height: 0;
+  }
+
+  body {
+    overflow: hidden;
+  }
+
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .main-shell {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main-content {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+  }
+
+  /* Dashboard, System Health and Notifications */
+  .main-content.page-scroll-enabled {
+    overflow-y: auto;
+  }
+
+  /* Other pages */
+  .main-content.page-scroll-disabled {
+    overflow-y: hidden;
+  }
+}
+
+/* Mobile */
+@media (max-width: 700px) {
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    height: auto;
+  }
+
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-shell {
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main-shell {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main-content {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+}
+
+/* SPOTSYNC PAGE SCROLL MANAGEMENT */
+
+@media (min-width: 701px) {
+  html,
+  body,
+  #root {
+    height: 100%;
+    min-height: 0;
+  }
+
+  body {
+    overflow: hidden;
+  }
+
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .main-shell {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .main-content {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+  }
+
+  .main-content.page-scroll-enabled {
+    overflow-y: auto;
+  }
+
+  .main-content.page-scroll-disabled {
+    overflow-y: hidden;
+  }
+}
+
+@media (max-width: 700px) {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    height: auto;
+  }
+
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-shell {
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main-shell {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+
+  .main-content {
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+}
