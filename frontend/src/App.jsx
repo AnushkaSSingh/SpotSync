@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+﻿import React, { useCallback, useEffect, useState } from 'react'
 import {
   BrowserRouter,
   useLocation,
@@ -6,16 +6,15 @@ import {
   Navigate
 } from 'react-router-dom'
 
-import { initialAlerts, initialSessions, initialSpaces } from './data/mockData'
+import { initialAlerts, initialSpaces } from './data/mockData'
 import { SpotSyncProvider } from './context/SpotSyncContext'
 import { Shell } from './components/Shared'
-import { getToken, getCurrentUser, logoutUser } from './services/api'
 
 import Landing from './pages/Landing'
 import SignUp from './pages/SignUp'
 import Login from './pages/Login'
-
 import StaffDashboard from './pages/StaffDashboard'
+
 import Entry from './pages/Entry'
 import Layout from './pages/Layout'
 import Allocation from './pages/Allocation'
@@ -23,118 +22,265 @@ import Tickets from './pages/Tickets'
 import Active from './pages/Active'
 import Exit from './pages/Exit'
 import History from './pages/History'
+import Reservations from './pages/Reservations'
 import Navigation from './pages/Navigation'
+import PublicNavigation from './pages/PublicNavigation'
 import Settings from './pages/Settings'
-import SystemHealth from './pages/SystemHealth'
+
 import Sensors from './pages/Sensors'
 import Mismatches from './pages/Mismatches'
 import Notifications from './pages/Notifications'
+import SystemHealth from './pages/SystemHealth'
+
+import {
+  api,
+  getAuthToken,
+  clearAuthToken
+} from './services/api'
 
 function Workspace() {
   const [authenticated, setAuthenticated] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [authChecking, setAuthChecking] = useState(true)
+  const [currentUser, setCurrentUser] = useState(null)
 
   const [spaces, setSpaces] = useState(initialSpaces)
-  const [sessions, setSessions] = useState(initialSessions)
+  const [sessions, setSessions] = useState([])
   const [alerts] = useState(initialAlerts)
 
   const location = useLocation()
   const navigate = useNavigate()
-  const go = path => navigate(path)
+
   const path = location.pathname
+  const go = target => navigate(target)
+
+  // Public routes are rendered after all hooks to preserve hook order.
+  const navigationMatch = path.match(/^\/navigate\/([^/]+)\/?$/)
+  const driverMatch = path.match(/^\/driver\/([^/]+)\/?$/)
 
   useEffect(() => {
     let active = true
 
-    async function verifySession() {
-      if (!getToken()) {
-        if (active) setCheckingAuth(false)
+    async function restoreSession() {
+      if (!getAuthToken()) {
+        if (active) setAuthChecking(false)
         return
       }
 
       try {
-        await getCurrentUser()
+        const user = await api.auth.me()
 
         if (active) {
+          setCurrentUser(user)
           setAuthenticated(true)
         }
-      } catch (error) {
+      } catch {
+        clearAuthToken()
+
         if (active) {
+          setCurrentUser(null)
           setAuthenticated(false)
         }
       } finally {
-        if (active) {
-          setCheckingAuth(false)
-        }
+        if (active) setAuthChecking(false)
       }
     }
 
-    verifySession()
+    restoreSession()
 
     return () => {
       active = false
     }
   }, [])
 
-  if (path === '/') return <Landing />
-  if (path === '/signup') return <SignUp />
+  const loadRealSessions = useCallback(async () => {
+    const [sessionResult, vehicleResult, slotResult] =
+      await Promise.allSettled([
+        api.sessions.list(),
+        api.vehicles.list(),
+        api.parking.slots({ availableOnly: false })
+      ])
 
-  if (path === '/login') {
+    let backendSlots = []
+
+    if (slotResult.status === 'fulfilled') {
+      const response = slotResult.value
+      backendSlots = Array.isArray(response)
+        ? response
+        : response?.slots || []
+
+      const backendSpaces = backendSlots.map(slot => {
+        const displayCode =
+          slot.display_code ||
+          slot.slot_number ||
+          `Bay ${slot.id}`
+
+        const floorValue =
+          typeof slot.floor === 'string'
+            ? slot.floor
+            : slot.floor?.name || slot.floor_name || ''
+
+        const floorMatch = displayCode.match(/^(B\d+|GF|G|L\d+)/i)
+
+        return {
+          ...slot,
+          id: displayCode,
+          parking_slot_id: slot.id,
+          floor: String(floorValue || floorMatch?.[1] || '').toUpperCase(),
+          status: slot.status || (slot.is_available ? 'AVAILABLE' : 'UNKNOWN'),
+          zone: slot.zone || 'A'
+        }
+      })
+
+      if (backendSpaces.length) setSpaces(backendSpaces)
+    } else {
+      console.error('Unable to load parking bays:', slotResult.reason)
+    }
+
+    if (vehicleResult.status === 'rejected') {
+      console.error('Unable to load vehicles:', vehicleResult.reason)
+    }
+
+    const vehicleResponse =
+      vehicleResult.status === 'fulfilled' ? vehicleResult.value : null
+
+    const vehicles = Array.isArray(vehicleResponse)
+      ? vehicleResponse
+      : vehicleResponse?.vehicles || []
+
+    const vehicleMap = new Map(
+      vehicles.map(vehicle => [vehicle.id, vehicle])
+    )
+
+    if (sessionResult.status === 'rejected') {
+      console.error('Unable to load sessions:', sessionResult.reason)
+      return []
+    }
+
+    const sessionResponse = sessionResult.value
+    const backendSessions = Array.isArray(sessionResponse)
+      ? sessionResponse
+      : sessionResponse?.sessions || []
+
+    const slotMap = new Map(
+      backendSlots.map(slot => [slot.id, slot])
+    )
+
+    const realSessions = backendSessions.map(session => {
+      const vehicle = vehicleMap.get(session.vehicle_id)
+      const slot = slotMap.get(session.parking_slot_id)
+
+      return {
+        sessionId: session.id,
+        ticket: `SESSION-${session.id}`,
+        vehicle: vehicle?.vehicle_number || 'Vehicle unavailable',
+        bay:
+          slot?.display_code ||
+          slot?.slot_number ||
+          `Bay ${session.parking_slot_id}`,
+        entry: session.started_at
+          ? new Date(session.started_at).toLocaleString('en-IN')
+          : 'Unknown',
+        status: session.status,
+        customer:
+          currentUser?.full_name ||
+          currentUser?.name ||
+          currentUser?.email ||
+          'Signed-in user',
+        type: vehicle?.vehicle_type || 'Vehicle',
+        startedAt: session.started_at,
+        endedAt: session.ended_at,
+        parkingSlotId: session.parking_slot_id,
+        vehicleId: session.vehicle_id
+      }
+    })
+
+    setSessions(realSessions)
+    return realSessions
+  }, [currentUser])
+
+  useEffect(() => {
+    if (!authenticated) return
+
+    loadRealSessions().catch(error => {
+      console.error('Unable to refresh parking data:', error)
+    })
+  }, [authenticated, loadRealSessions])
+
+  function handleLogin(user) {
+    setCurrentUser(user)
+    setAuthenticated(true)
+    navigate('/dashboard')
+  }
+
+  function handleLogout() {
+    clearAuthToken()
+    setCurrentUser(null)
+    setAuthenticated(false)
+    setSessions([])
+    navigate('/login')
+  }
+
+  async function createSession() {
+    await loadRealSessions()
+  }
+
+  async function processExit(sessionId) {
+    if (!sessionId) {
+      throw new Error('This session does not have a valid backend ID.')
+    }
+
+    await api.sessions.exit(Number(sessionId))
+    await loadRealSessions()
+  }
+
+  if (navigationMatch) {
+    return <PublicNavigation />
+  }
+
+  if (driverMatch) {
     return (
-      <Login
-        onLogin={() => {
-          setAuthenticated(true)
-          navigate('/dashboard')
-        }}
+      <Navigate
+        to={path.replace(/^\/driver\//, '/navigate/')}
+        replace
       />
     )
   }
 
-  if (checkingAuth) {
+  if (path === '/') return <Landing />
+  if (path === '/signup') return <SignUp />
+
+  if (path === '/login') {
+    if (authenticated) return <Navigate to="/dashboard" replace />
+    return <Login onLogin={handleLogin} />
+  }
+
+  if (authChecking) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        color: '#60449a',
-        fontFamily: 'Arial, sans-serif',
-        fontWeight: 600
-      }}>
-        Verifying your SpotSync session...
+      <div className="login-page">
+        <div className="login-panel">
+          <p>Checking your SpotSync session...</p>
+        </div>
       </div>
     )
   }
 
   if (!authenticated) {
-    return <Navigate to="/login" replace />
+    return <Login onLogin={handleLogin} />
   }
 
-  function createSession(item) {
-    setSessions(previous => [item, ...previous])
-    setSpaces(previous => previous.map(space =>
-      space.id === item.bay
-        ? { ...space, status: 'RESERVED' }
-        : space
-    ))
-  }
-
-  function processExit(ticket) {
-    const session = sessions.find(item => item.ticket === ticket)
-    if (!session) return
-
-    setSessions(previous => previous.filter(item => item.ticket !== ticket))
-    setSpaces(previous => previous.map(space =>
-      space.id === session.bay
-        ? { ...space, status: 'AVAILABLE', vehicle: '' }
-        : space
-    ))
+  const common = {
+    spaces,
+    sessions,
+    alerts,
+    go,
+    currentUser
   }
 
   let page
 
   switch (path) {
     case '/dashboard':
-      page = <StaffDashboard spaces={spaces} sessions={sessions} alerts={alerts} />
+      page = <StaffDashboard {...common} />
       break
     case '/entry':
       page = <Entry spaces={spaces} onCreate={createSession} />
@@ -157,37 +303,36 @@ function Workspace() {
     case '/history':
       page = <History sessions={sessions} />
       break
+    case '/reservations':
+      page = <Reservations />
+      break
     case '/navigation':
       page = <Navigation spaces={spaces} />
       break
     case '/settings':
       page = <Settings />
       break
-    case '/mismatches':
-      page = <Mismatches />
-      break
     case '/sensors':
       page = <Sensors />
       break
-    case '/system-health':
-      page = <SystemHealth />
+    case '/mismatches':
+      page = <Mismatches />
       break
     case '/notifications':
       page = <Notifications />
       break
+    case '/system-health':
+      page = <SystemHealth />
+      break
     default:
-      return <Navigate to="/dashboard" replace />
+      page = <Navigate to="/dashboard" replace />
   }
 
   return (
     <Shell
       path={path}
       onNavigate={go}
-      onLogout={() => {
-        logoutUser()
-        setAuthenticated(false)
-        navigate('/login')
-      }}
+      onLogout={handleLogout}
     >
       {page}
     </Shell>
@@ -203,3 +348,4 @@ export default function App() {
     </SpotSyncProvider>
   )
 }
+

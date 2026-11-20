@@ -1,619 +1,578 @@
-import React, { useMemo, useState } from 'react'
+﻿
+import React, { useEffect, useState } from 'react'
 import {
-  Car, Truck, Bike, Zap, MapPin, Accessibility,
-  ArrowRight, Check, ParkingCircle
+  CarFront,
+  CheckCircle2,
+  RefreshCw,
+  Ticket,
+  AlertCircle,
+  Zap,
+  Accessibility,
+  DoorOpen
 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
+import { PageTitle, Card, Button, Status } from '../components/Shared'
+import { api } from '../services/api'
 
-export default function Entry({ spaces = [], onCreate }) {
-  const [plate, setPlate] = useState('')
+const registrationPattern =
+  /^(?:[A-Z]{2}\d{1,2}[A-Z]{0,3}\d{1,4}|\d{2}BH\d{4}[A-Z]{1,2})$/
+
+function normalizeRegistration(value) {
+  return value.toUpperCase().replace(/[\s-]/g, '')
+}
+
+function getList(response, key) {
+  if (Array.isArray(response)) return response
+  if (Array.isArray(response?.[key])) return response[key]
+  return []
+}
+
+export default function Entry({ onCreate }) {
+  const [vehicles, setVehicles] = useState([])
+  const [slots, setSlots] = useState([])
+  const [registration, setRegistration] = useState('')
   const [vehicleType, setVehicleType] = useState('Car')
-  const [nearEntrance, setNearEntrance] = useState(true)
-  const [evCharging, setEvCharging] = useState(false)
-  const [accessible, setAccessible] = useState(false)
-  const [ticket, setTicket] = useState(null)
+  const [selectedSlot, setSelectedSlot] = useState('')
+  const [preferences, setPreferences] = useState({
+    nearEntrance: false,
+    evCharging: false,
+    accessible: false
+  })
+
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [created, setCreated] = useState(null)
+  const [ticketError, setTicketError] = useState('')
 
-  const getBayId = (space) =>
-    space?.name || space?.bay || space?.slot || space?.id || ''
-
-  const getFloor = (space) => {
-    const value = `${getBayId(space)} ${space?.floor || ''} ${space?.area || ''}`.toLowerCase()
-    return value.includes('b2') || value.includes('basement 2')
-      ? 'Basement 2'
-      : 'Basement 1'
-  }
-
-  const isAvailable = (space) =>
-    String(space?.status || '').toUpperCase() === 'AVAILABLE'
-
-  const availableSpaces = useMemo(() => {
-    const order = ['B1-A1', 'B1-A2', 'B1-A3', 'B2-A1', 'B2-A2', 'B2-A3', 'B2-A4']
-
-    return spaces
-      .filter(isAvailable)
-      .sort((a, b) => {
-        const ai = order.indexOf(getBayId(a))
-        const bi = order.indexOf(getBayId(b))
-        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi)
-      })
-  }, [spaces])
-
-  // Automatic allocation: no manual floor or bay selection.
-  const suggestedSpace = useMemo(() => {
-    if (!availableSpaces.length) return null
-
-    let candidates = [...availableSpaces]
-
-    if (evCharging) {
-      const evSpaces = candidates.filter(
-        space => space.evCharging === true ||
-          String(space.type || '').toLowerCase() === 'ev'
-      )
-
-      if (evSpaces.length) candidates = evSpaces
-    }
-
-    if (accessible) {
-      const accessibleSpaces = candidates.filter(
-        space => space.accessible === true
-      )
-
-      if (accessibleSpaces.length) candidates = accessibleSpaces
-    }
-
-    if (nearEntrance) {
-      candidates.sort((a, b) => {
-        const distanceA = Number(a.distanceToEntrance ?? a.distance ?? 999)
-        const distanceB = Number(b.distanceToEntrance ?? b.distance ?? 999)
-        return distanceA - distanceB
-      })
-    }
-
-    return candidates[0]
-  }, [availableSpaces, evCharging, accessible, nearEntrance])
-
-  const bayName = suggestedSpace ? getBayId(suggestedSpace) : 'No bay available'
-  const floorName = getFloor(suggestedSpace)
-
-  const distance = suggestedSpace?.distanceToEntrance ||
-    suggestedSpace?.distance || '18 m'
-
-  const allocateBay = () => {
+  async function loadData() {
+    setLoading(true)
     setError('')
 
-    const formattedPlate = plate.trim().toUpperCase()
+    try {
+      const [vehicleResponse, slotResponse] = await Promise.all([
+        api.vehicles.list(),
+        api.parking.slots({ availableOnly: true })
+      ])
 
-    if (!formattedPlate) {
+      const vehicleList = getList(vehicleResponse, 'vehicles')
+      const slotList = getList(slotResponse, 'slots')
+
+      setVehicles(vehicleList)
+      setSlots(slotList)
+
+      setSelectedSlot(previous => {
+        const stillAvailable = slotList.some(
+          slot => String(slot.id) === String(previous)
+        )
+        return stillAvailable
+          ? String(previous)
+          : slotList.length
+            ? String(slotList[0].id)
+            : ''
+      })
+    } catch (err) {
+      setError(
+        err.message ||
+        'Unable to load registered vehicles and available parking bays.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  function togglePreference(key) {
+    setPreferences(previous => ({
+      ...previous,
+      [key]: !previous[key]
+    }))
+  }
+
+  function saveDriverTicket(ticket) {
+    sessionStorage.setItem(
+      `spotsync_driver_ticket_${ticket.token}`,
+      JSON.stringify(ticket)
+    )
+  }
+
+  async function retryTicket() {
+    if (!created?.sessionId || submitting) return
+
+    setTicketError('')
+    setNotice('Generating your digital ticket...')
+
+    try {
+      const ticketResponse = await api.tickets.createForSession(
+        created.sessionId
+      )
+
+      const driverTicket = {
+        ...created,
+        token: ticketResponse.token,
+        expiresAt: ticketResponse.expires_at
+      }
+
+      saveDriverTicket(driverTicket)
+      setCreated(driverTicket)
+      setNotice('Digital ticket generated successfully.')
+    } catch (err) {
+      setTicketError(
+        err.message || 'Ticket generation failed. Please try again.'
+      )
+      setNotice('')
+    }
+  }
+
+  async function submit(event) {
+    event.preventDefault()
+    setError('')
+    setNotice('')
+    setTicketError('')
+    setCreated(null)
+
+    const vehicleNumber = normalizeRegistration(registration)
+
+    if (!vehicleNumber) {
       setError('Please enter the vehicle registration number.')
       return
     }
 
-    if (!suggestedSpace) {
-      setError('No available parking bay found.')
+    if (!registrationPattern.test(vehicleNumber)) {
+      setError(
+        'Enter a valid Indian registration number, e.g. UP14AB1234 or 22BH1234AA.'
+      )
       return
     }
 
-    const ticketData = {
-      ticket: `SS-${String(Date.now()).slice(-6)}`,
-      vehicle: formattedPlate,
-      bay: bayName,
-      entry: new Date().toLocaleString('en-IN'),
-      status: 'PARKED',
-      customer: '',
-      type: vehicleType,
-      contact: '',
-      preferences: { nearEntrance, evCharging, accessible }
+    if (!selectedSlot) {
+      setError('Please select an available parking bay.')
+      return
     }
+
+    const selectedBay = slots.find(
+      slot => String(slot.id) === String(selectedSlot)
+    )
+
+    if (!selectedBay) {
+      setError(
+        'The selected parking bay is no longer available. Refresh the list.'
+      )
+      return
+    }
+
+    setSubmitting(true)
+    let sessionCreated = false
 
     try {
-      if (onCreate) onCreate(ticketData)
-      setTicket(ticketData)
-    } catch {
-      setError('Unable to allocate the parking bay. Please try again.')
+      let vehicle = vehicles.find(item => {
+        const existingNumber = normalizeRegistration(
+          item.vehicle_number || item.registration_number || ''
+        )
+        return existingNumber === vehicleNumber
+      })
+
+      if (!vehicle) {
+        const vehicleResponse = await api.vehicles.create({
+          registration_number: vehicleNumber,
+          vehicle_type: vehicleType
+        })
+
+        vehicle = vehicleResponse.vehicle || vehicleResponse
+
+        if (!vehicle?.id) {
+          throw new Error(
+            'The vehicle was saved, but its ID was not returned by the server.'
+          )
+        }
+
+        setVehicles(previous => [...previous, vehicle])
+      } else {
+        setNotice(
+          `Existing vehicle record found. Reusing ${vehicleNumber}.`
+        )
+      }
+
+      if (!vehicle?.id) {
+        throw new Error(
+          'A valid vehicle ID was not returned by the server.'
+        )
+      }
+
+      const sessionResponse = await api.sessions.start({
+        parking_slot_id: Number(selectedBay.id),
+        vehicle_id: Number(vehicle.id)
+      })
+
+      const session = sessionResponse.session || sessionResponse
+
+      if (!session?.id) {
+        throw new Error(
+          'The session request returned no session ID. Please verify the session before retrying.'
+        )
+      }
+
+      sessionCreated = true
+
+      const bay =
+        selectedBay.display_code ||
+        selectedBay.slot_number ||
+        `Bay ${selectedBay.id}`
+
+      const entryTime = new Date().toLocaleString('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      })
+
+      const localSession = {
+        ticket: `SESSION-${session.id}`,
+        sessionId: session.id,
+        vehicle: vehicleNumber,
+        bay,
+        entry: entryTime,
+        status: session.status || 'ACTIVE',
+        customer: 'Signed-in user'
+      }
+
+      setCreated({
+        ...localSession,
+        token: '',
+        expiresAt: ''
+      })
+
+      if (onCreate) {
+        onCreate(localSession)
+      }
+
+      setNotice('Parking session created successfully.')
+
+      // Refresh available bays after the backend creates the session.
+      try {
+        const updatedSlots = await api.parking.slots({
+          availableOnly: true
+        })
+
+        const updatedList = getList(updatedSlots, 'slots')
+        setSlots(updatedList)
+        setSelectedSlot(
+          updatedList.length ? String(updatedList[0].id) : ''
+        )
+      } catch {
+        // Do not undo a successfully created session if refresh fails.
+      }
+
+      // Preserve the existing backend ticket-generation workflow.
+      try {
+        const ticketResponse = await api.tickets.createForSession(
+          session.id
+        )
+
+        const driverTicket = {
+          ...localSession,
+          token: ticketResponse.token,
+          expiresAt: ticketResponse.expires_at
+        }
+
+        saveDriverTicket(driverTicket)
+        setCreated(driverTicket)
+        setNotice(
+          'Parking session and digital ticket created successfully.'
+        )
+      } catch (err) {
+        setTicketError(
+          err.message ||
+          'The session was created, but ticket generation failed. You can retry below.'
+        )
+      }
+
+      setRegistration('')
+    } catch (err) {
+      if (sessionCreated) {
+        setNotice(
+          'Your parking session was created. Please check the ticket section.'
+        )
+      } else {
+        setError(
+          err.message || 'Unable to create the parking session.'
+        )
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const resetForm = () => {
-    setPlate('')
-    setVehicleType('Car')
-    setNearEntrance(true)
-    setEvCharging(false)
-    setAccessible(false)
-    setTicket(null)
-    setError('')
-  }
-
-  const qrValue = ticket
-    ? JSON.stringify({
-        ticketId: ticket.ticket,
-        vehicle: ticket.vehicle,
-        bay: ticket.bay,
-        entry: ticket.entry,
-        status: ticket.status
-      })
-    : ''
+  const preferenceOptions = [
+    {
+      key: 'nearEntrance',
+      label: 'Near entrance',
+      description: 'Prefer a bay closer to the entrance',
+      Icon: DoorOpen
+    },
+    {
+      key: 'evCharging',
+      label: 'EV charging',
+      description: 'I need an electric vehicle charging bay',
+      Icon: Zap
+    },
+    {
+      key: 'accessible',
+      label: 'Accessible parking',
+      description: 'I need an accessible parking bay',
+      Icon: Accessibility
+    }
+  ]
 
   return (
-    <div className="entry-page">
-      <style>{`
-        .entry-page {
-          padding: 18px 24px;
-          color: var(--text, #211044);
-          font-family: Arial, sans-serif;
-        }
-        .entry-page * { box-sizing: border-box; }
-        .entry-heading { margin-bottom: 16px; }
-        .entry-heading h1 {
-          font: 34px Georgia, serif;
-          margin: 7px 0;
-          color: #241044;
-        }
-        .entry-heading h1 em { color: #6830c4; }
-        .entry-heading p { color: #82769a; font-size: 11px; }
-        .entry-step {
-          color: #5b2aa5;
-          font-size: 10px;
-          font-weight: bold;
-        }
-        .entry-layout {
-          display: grid;
-          grid-template-columns: 1.12fr .88fr;
-          gap: 16px;
-          max-width: 1200px;
-          align-items: stretch;
-        }
-        .entry-form-card {
-          background: var(--card, white);
-          border: 1px solid #e7def2;
-          border-radius: 15px;
-          padding: 19px;
-          min-width: 0;
-        }
-        .entry-form-card h3 { font-size: 13px; margin: 0 0 17px; }
-        .entry-label {
-          display: block;
-          font-size: 10px;
-          font-weight: bold;
-          margin-bottom: 8px;
-        }
-        .entry-plate {
-          display: flex;
-          height: 43px;
-          border: 1px solid #a78ad7;
-          border-radius: 8px;
-          overflow: hidden;
-          background: #fff7df;
-        }
-        .entry-country {
-          width: 32px;
-          background: #214eaa;
-          color: white;
-          display: grid;
-          place-items: center;
-          font-size: 9px;
-          font-weight: bold;
-        }
-        .entry-plate input {
-          width: 100%;
-          min-width: 0;
-          border: 0;
-          outline: 0;
-          background: transparent;
-          text-align: center;
-          font: bold 19px Georgia;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          color: #625344;
-        }
-        .entry-hint { font-size: 9px; color: #9789ad; margin: 5px 0 17px; }
-        .entry-vehicle-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 7px;
-          margin-bottom: 17px;
-        }
-        .entry-vehicle {
-          height: 53px;
-          border: 1px solid #e5dcef;
-          border-radius: 9px;
-          background: var(--card, white);
-          color: #5c4a78;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-direction: column;
-          gap: 5px;
-          font-size: 10px;
-          cursor: pointer;
-        }
-        .entry-vehicle.selected {
-          background: #f1eaff;
-          border: 1.5px solid #6b2be0;
-          color: #5b22bf;
-        }
-        .entry-preference {
-          min-height: 53px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          border-bottom: 1px solid #eee8f4;
-        }
-        .entry-pref-icon {
-          width: 27px;
-          height: 27px;
-          flex-shrink: 0;
-          display: grid;
-          place-items: center;
-          color: #6328c8;
-          background: #f1eaff;
-          border-radius: 8px;
-        }
-        .entry-pref-text { flex: 1; }
-        .entry-pref-text strong { display: block; font-size: 10px; }
-        .entry-pref-text small { color: #9689a9; font-size: 9px; }
-        .entry-toggle {
-          width: 32px;
-          height: 18px;
-          padding: 2px;
-          border: 0;
-          border-radius: 20px;
-          background: #dcd5e8;
-          cursor: pointer;
-        }
-        .entry-toggle span {
-          display: block;
-          height: 14px;
-          width: 14px;
-          border-radius: 50%;
-          background: white;
-          transition: transform .2s;
-        }
-        .entry-toggle.active { background: #5b20b9; }
-        .entry-toggle.active span { transform: translateX(14px); }
-        .entry-error { margin-top: 10px; color: #c43f4c; font-size: 11px; }
+    <>
+      <PageTitle
+        title="New vehicle entry"
+        subtitle="Register a vehicle, choose an available bay and create a parking session."
+      />
 
-        .ticket-card {
-          width: 100%;
-          max-width: 430px;
-          justify-self: center;
-          align-self: center;
-          overflow: hidden;
-          border-radius: 21px;
-          background: #fffaf1;
-          box-shadow: 0 12px 27px #2b134f26;
-          border: 1px solid #e9def1;
-          color: #29134f;
-        }
-        .ticket-header {
-          min-height: 40px;
-          padding: 0 17px;
-          background: linear-gradient(105deg, #401477, #6324a8);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          color: white;
-          border-bottom: 3px solid #edc96b;
-        }
-        .ticket-header strong { font-size: 10px; }
-        .ticket-match {
-          background: white;
-          color: #51208e;
-          border-radius: 20px;
-          padding: 5px 11px;
-          font-size: 9px;
-          font-weight: bold;
-        }
-        .ticket-main { padding: 10px 18px 0; }
-        .ticket-bay-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .ticket-bay {
-          font: bold 45px Georgia, serif;
-          color: #301052;
-          overflow-wrap: anywhere;
-        }
-        .ticket-badges {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          margin: 7px 0 12px;
-        }
-        .ticket-badge {
-          background: #eee5fa;
-          border: 1px solid #d9c7f2;
-          color: #4b2878;
-          padding: 5px 8px;
-          border-radius: 6px;
-          font-size: 9px;
-        }
-        .ticket-divider {
-          height: 20px;
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-        .ticket-divider:before {
-          content: "";
-          width: 100%;
-          border-top: 2px dashed #cbb7e6;
-        }
-        .ticket-divider:after, .ticket-divider span {
-          content: "";
-          position: absolute;
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          background: var(--bg, #f5f1fb);
-          top: 0;
-        }
-        .ticket-divider:after { right: -29px; }
-        .ticket-divider span { left: -29px; }
-        .ticket-qr-area {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 5px 0 9px;
-        }
-        .ticket-qr-box {
-          width: 124px;
-          height: 124px;
-          display: grid;
-          place-items: center;
-          border: 1px solid #e0d2ee;
-          border-radius: 11px;
-          background: white;
-          padding: 8px;
-        }
-        .ticket-qr-caption {
-          margin-top: 6px;
-          color: #76638d;
-          font-size: 8px;
-          font-weight: bold;
-        }
-        .ticket-details { padding: 0 18px 10px; }
-        .ticket-detail-row {
-          min-height: 26px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          border-bottom: 1px dotted #d9cce3;
-          font-size: 10px;
-        }
-        .ticket-detail-row span { color: #867697; }
-        .ticket-detail-row strong { color: #30164f; text-align: right; }
-        .ticket-actions { padding: 0 14px 12px; }
-        .ticket-allocate {
-          width: 100%;
-          min-height: 38px;
-          border: 0;
-          border-radius: 22px;
-          background: #542095;
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          font-size: 12px;
-          font-weight: bold;
-          cursor: pointer;
-        }
-        .ticket-allocate:disabled { opacity: .5; cursor: not-allowed; }
-        .ticket-new {
-          width: 100%;
-          margin-top: 7px;
-          border: 1px solid #d9c9eb;
-          background: transparent;
-          color: #55218d;
-          border-radius: 20px;
-          padding: 8px;
-          font-size: 10px;
-          cursor: pointer;
-        }
-        @media(max-width:760px) {
-          .entry-page { padding: 15px 12px; }
-          .entry-layout { grid-template-columns: 1fr; }
-          .ticket-card { max-width: 430px; }
-        }
-        @media print {
-          @page { size: 80mm 130mm; margin: 3mm; }
-          body * { visibility: hidden !important; }
-          .ticket-card, .ticket-card * { visibility: visible !important; }
-          .ticket-card {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 74mm;
-            max-width: 74mm;
-            box-shadow: none;
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          .ticket-actions { display: none !important; }
-        }
-      `}</style>
+      <div className="two-col">
+        <Card
+          title="Vehicle information"
+          subtitle="Enter vehicle details and select your parking requirements."
+        >
+          <form className="form-grid" onSubmit={submit}>
+            <label className="span-2">
+              Vehicle registration
+              <input
+                value={registration}
+                onChange={event => {
+                  setRegistration(event.target.value.toUpperCase())
+                  setError('')
+                }}
+                placeholder="e.g. UP14 AB 1234"
+                autoComplete="off"
+                disabled={submitting}
+                maxLength={15}
+              />
+              <small className="muted">
+                Indian registration format. Spaces and hyphens are accepted.
+              </small>
+            </label>
 
-      <div className="entry-heading">
-        <div className="entry-step">STEP 1 OF 2 · VEHICLE REGISTRATION</div>
-        <h1>Welcome a <em>new arrival</em></h1>
-        <p>Register the vehicle and let SpotSync find its most suitable parking bay.</p>
-      </div>
-
-      <div className="entry-layout">
-        <section className="entry-form-card">
-          <h3>Vehicle entry details</h3>
-
-          <label className="entry-label">Vehicle number plate *</label>
-          <div className="entry-plate">
-            <div className="entry-country">IND</div>
-            <input
-              value={plate}
-              onChange={e => setPlate(e.target.value.toUpperCase())}
-              placeholder="DL8C 5521"
-              maxLength={13}
-            />
-          </div>
-          <p className="entry-hint">Enter the registration number exactly as printed on the plate.</p>
-
-          <label className="entry-label">Select vehicle type</label>
-          <div className="entry-vehicle-grid">
-            {[
-              { name: 'Car', icon: Car },
-              { name: 'SUV', icon: Truck },
-              { name: 'Bike', icon: Bike },
-              { name: 'EV', icon: Zap }
-            ].map(({ name, icon: Icon }) => (
-              <button
-                key={name}
-                type="button"
-                className={`entry-vehicle ${vehicleType === name ? 'selected' : ''}`}
-                onClick={() => setVehicleType(name)}
+            <label>
+              Vehicle type
+              <select
+                value={vehicleType}
+                onChange={event => setVehicleType(event.target.value)}
+                disabled={submitting}
               >
-                <Icon size={15} />{name}
-              </button>
-            ))}
-          </div>
+                <option value="Car">Car</option>
+                <option value="SUV">SUV</option>
+                <option value="Bike">Bike</option>
+                <option value="EV">EV</option>
+              </select>
+            </label>
 
-          <label className="entry-label">Parking preferences</label>
+            <label>
+              Available parking bay
+              <select
+                value={selectedSlot}
+                onChange={event => setSelectedSlot(event.target.value)}
+                disabled={loading || submitting || slots.length === 0}
+              >
+                {slots.length === 0 && (
+                  <option value="">No available bays</option>
+                )}
 
-          {[
-            {
-              title: 'Near the entrance',
-              description: 'Shorter walk to the entrance',
-              icon: MapPin,
-              checked: nearEntrance,
-              change: setNearEntrance
-            },
-            {
-              title: 'EV charging bay',
-              description: 'Request an electric charging space',
-              icon: Zap,
-              checked: evCharging,
-              change: setEvCharging
-            },
-            {
-              title: 'Accessible parking',
-              description: 'Request an accessible parking space',
-              icon: Accessibility,
-              checked: accessible,
-              change: setAccessible
-            }
-          ].map(item => {
-            const Icon = item.icon
-            return (
-              <div className="entry-preference" key={item.title}>
-                <div className="entry-pref-icon"><Icon size={15} /></div>
-                <div className="entry-pref-text">
-                  <strong>{item.title}</strong>
-                  <small>{item.description}</small>
-                </div>
-                <button
-                  type="button"
-                  className={`entry-toggle ${item.checked ? 'active' : ''}`}
-                  onClick={() => item.change(!item.checked)}
-                  aria-pressed={item.checked}
-                >
-                  <span />
-                </button>
+                {slots.map(slot => (
+                  <option key={slot.id} value={String(slot.id)}>
+                    {slot.display_code || slot.slot_number || `Bay ${slot.id}`}
+                    {slot.slot_type ? ` — ${slot.slot_type}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="span-2">
+              <b>Parking preferences</b>
+              <p className="muted">
+                Select any requirements for this parking visit.
+              </p>
+
+              <div style={{
+                display: 'grid',
+                gap: 10,
+                marginTop: 10
+              }}>
+                {preferenceOptions.map(({ key, label, description, Icon }) => (
+                  <label
+                    key={key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 12,
+                      border: '1px solid #dbe2ea',
+                      borderRadius: 9,
+                      cursor: submitting ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={preferences[key]}
+                      onChange={() => togglePreference(key)}
+                      disabled={submitting}
+                    />
+                    <Icon size={19} />
+                    <span>
+                      <b>{label}</b>
+                      <small
+                        className="muted"
+                        style={{ display: 'block' }}
+                      >
+                        {description}
+                      </small>
+                    </span>
+                  </label>
+                ))}
               </div>
-            )
-          })}
 
-          {error && <div className="entry-error">{error}</div>}
-        </section>
-
-        <section className="ticket-card">
-          <div className="ticket-header">
-            <strong>SUGGESTED BAY</strong>
-            <span className="ticket-match">96% match</span>
-          </div>
-
-          <div className="ticket-main">
-            <div className="ticket-bay-row">
-              <div className="ticket-bay">{ticket?.bay || bayName}</div>
-              <small>BAY</small>
+              <p className="muted" style={{ fontSize: 12 }}>
+                Preferences are recorded in this form only. Backend
+                preference-based allocation is not connected yet.
+              </p>
             </div>
-            <div className="ticket-badges">
-              <span className="ticket-badge"><ParkingCircle size={10} /> {ticket ? floorName : floorName}</span>
-              <span className="ticket-badge"><MapPin size={10} /> {distance} to entrance</span>
-              <span className="ticket-badge"><Check size={10} /> Available</span>
+
+            {loading && (
+              <p className="muted span-2">
+                Loading registered vehicles and available bays...
+              </p>
+            )}
+
+            {error && (
+              <p className="form-error span-2">
+                <AlertCircle size={15} /> {error}
+              </p>
+            )}
+
+            {notice && (
+              <p className="success-note span-2">
+                <CheckCircle2 size={15} /> {notice}
+              </p>
+            )}
+
+            <div className="span-2">
+              <Button
+                type="submit"
+                icon={CheckCircle2}
+                disabled={loading || submitting || !slots.length}
+              >
+                {submitting
+                  ? 'Creating parking session...'
+                  : 'Create parking session'}
+              </Button>
             </div>
-          </div>
 
-          <div className="ticket-divider"><span /></div>
+            <div className="span-2">
+              <Button
+                type="button"
+                variant="outline"
+                icon={RefreshCw}
+                onClick={loadData}
+                disabled={loading || submitting}
+              >
+                Refresh vehicles and bays
+              </Button>
+            </div>
+          </form>
+        </Card>
 
-          <div className="ticket-qr-area">
-            <div className="ticket-qr-box">
-              {ticket ? (
-                <QRCodeSVG
-                  value={qrValue}
-                  size={106}
-                  level="H"
-                  includeMargin
-                  bgColor="#ffffff"
-                  fgColor="#211044"
-                />
-              ) : (
-                <div style={{ textAlign: 'center', color: '#9889a8', fontSize: 9 }}>
-                  <ParkingCircle size={24} />
-                  <br />QR code generated after allocation
+        <Card
+          title="Entry confirmation"
+          subtitle="Your backend-created parking session and digital ticket."
+        >
+          {created ? (
+            <div className="ticket-preview">
+              <div className="ticket-top">
+                <span>SPOTSYNC PARKING SESSION</span>
+                <Status value={created.status} />
+              </div>
+
+              <div className="ticket-details">
+                <div>
+                  <small>VEHICLE</small>
+                  <b>{created.vehicle}</b>
                 </div>
+
+                <div>
+                  <small>ASSIGNED BAY</small>
+                  <b>{created.bay}</b>
+                </div>
+
+                <div>
+                  <small>SESSION ID</small>
+                  <b>{created.sessionId}</b>
+                </div>
+
+                <div>
+                  <small>ENTRY TIME</small>
+                  <b>{created.entry}</b>
+                </div>
+              </div>
+
+              <div className="ticket-top">
+                <span>
+                  <Ticket size={16} /> DIGITAL TICKET
+                </span>
+              </div>
+
+              {created.token ? (
+                <>
+                  <p className="muted">
+                    Your digital parking ticket has been generated.
+                  </p>
+
+                  <p className="muted">
+                    This ticket token expires at{' '}
+                    {created.expiresAt
+                      ? new Date(created.expiresAt).toLocaleString('en-IN')
+                      : 'the time specified by the server'}.
+                  </p>
+
+                  <a href={`/driver/${encodeURIComponent(created.token)}`}>
+                    Open Driver Ticket
+                  </a>
+                </>
+              ) : (
+                <>
+                  <p className="muted">
+                    Your parking session is saved. The digital ticket
+                    has not been generated yet.
+                  </p>
+
+                  {ticketError && (
+                    <p className="form-error">{ticketError}</p>
+                  )}
+
+                  <Button
+                    type="button"
+                    icon={RefreshCw}
+                    onClick={retryTicket}
+                    disabled={submitting}
+                  >
+                    Retry ticket generation
+                  </Button>
+                </>
               )}
             </div>
-            <div className="ticket-qr-caption">
-              {ticket ? 'SCAN AT EXIT BARRIER' : 'QR CODE PREVIEW'}
+          ) : (
+            <div className="empty-state">
+              <CarFront size={28} />
+              <b>Entry confirmation will appear here</b>
+              <span>
+                Complete the vehicle details to create a parking session.
+              </span>
             </div>
-          </div>
-
-          <div className="ticket-details">
-            <div className="ticket-detail-row">
-              <span>Ticket ID</span>
-              <strong>{ticket?.ticket || 'Generated on allocation'}</strong>
-            </div>
-            <div className="ticket-detail-row">
-              <span>Vehicle</span>
-              <strong>{ticket?.vehicle || plate || '—'}</strong>
-            </div>
-            <div className="ticket-detail-row">
-              <span>Allocated bay</span>
-              <strong>{ticket?.bay || bayName}</strong>
-            </div>
-            <div className="ticket-detail-row">
-              <span>Area</span>
-              <strong>{floorName}</strong>
-            </div>
-          </div>
-
-          <div className="ticket-actions">
-            {!ticket ? (
-              <button
-                type="button"
-                className="ticket-allocate"
-                disabled={!suggestedSpace}
-                onClick={allocateBay}
-              >
-                Allocate bay <ArrowRight size={15} />
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="ticket-allocate"
-                  onClick={() => window.print()}
-                >
-                  Print parking ticket <ArrowRight size={15} />
-                </button>
-                <button type="button" className="ticket-new" onClick={resetForm}>
-                  Create new entry
-                </button>
-              </>
-            )}
-          </div>
-        </section>
+          )}
+        </Card>
       </div>
-    </div>
+    </>
   )
 }

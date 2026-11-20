@@ -106,9 +106,12 @@ def get_parking_slots(
                 "parking_lot_id": slot.parking_lot_id,
                 "slot_number": slot.slot_number,
                 "slot_type": slot.slot_type,
+                "status": slot.status,
                 "is_available": (
                     slot.status == "AVAILABLE" and slot.is_available
                 ),
+                "floor_id": slot.floor_id,
+                "display_code": slot.display_code,
             }
             for slot in slots
         ],
