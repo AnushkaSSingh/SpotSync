@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { loginUser, getCurrentUser } from '../services/api'
 import {
   ArrowRight, Eye, EyeOff, LockKeyhole, Mail
 } from 'lucide-react'
@@ -10,17 +11,30 @@ export default function Login({ onLogin }) {
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
 
-    if (!email.trim() || !password.trim()) {
+    if (!email.trim() || !password) {
       setMessage('Please enter your email address and password.')
       return
     }
 
-    // Frontend demo only: replace with backend authentication.
-    onLogin()
+    if (loading) return
+
+    setLoading(true)
+    setMessage('')
+
+    try {
+      await loginUser(email.trim().toLowerCase(), password)
+      const user = await getCurrentUser()
+      onLogin(user)
+    } catch (error) {
+      setMessage(error.message || 'Login failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -279,8 +293,14 @@ export default function Login({ onLogin }) {
             </div>
           )}
 
-          <button type="submit" className="staff-login-submit">
-            Sign In <ArrowRight size={17} />
+          <button
+            type="submit"
+            className="staff-login-submit"
+            disabled={loading}
+            style={{ opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? 'Signing In...' : 'Sign In'}
+            {!loading && <ArrowRight size={17} />}
           </button>
 
           <p className="staff-login-switch">

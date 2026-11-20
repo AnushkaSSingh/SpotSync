@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import {
   BrowserRouter,
   useLocation,
@@ -9,6 +9,7 @@ import {
 import { initialAlerts, initialSessions, initialSpaces } from './data/mockData'
 import { SpotSyncProvider } from './context/SpotSyncContext'
 import { Shell } from './components/Shared'
+import { getToken, getCurrentUser, logoutUser } from './services/api'
 
 import Landing from './pages/Landing'
 import SignUp from './pages/SignUp'
@@ -31,6 +32,8 @@ import Notifications from './pages/Notifications'
 
 function Workspace() {
   const [authenticated, setAuthenticated] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+
   const [spaces, setSpaces] = useState(initialSpaces)
   const [sessions, setSessions] = useState(initialSessions)
   const [alerts] = useState(initialAlerts)
@@ -39,6 +42,39 @@ function Workspace() {
   const navigate = useNavigate()
   const go = path => navigate(path)
   const path = location.pathname
+
+  useEffect(() => {
+    let active = true
+
+    async function verifySession() {
+      if (!getToken()) {
+        if (active) setCheckingAuth(false)
+        return
+      }
+
+      try {
+        await getCurrentUser()
+
+        if (active) {
+          setAuthenticated(true)
+        }
+      } catch (error) {
+        if (active) {
+          setAuthenticated(false)
+        }
+      } finally {
+        if (active) {
+          setCheckingAuth(false)
+        }
+      }
+    }
+
+    verifySession()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   if (path === '/') return <Landing />
   if (path === '/signup') return <SignUp />
@@ -51,6 +87,21 @@ function Workspace() {
           navigate('/dashboard')
         }}
       />
+    )
+  }
+
+  if (checkingAuth) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        color: '#60449a',
+        fontFamily: 'Arial, sans-serif',
+        fontWeight: 600
+      }}>
+        Verifying your SpotSync session...
+      </div>
     )
   }
 
@@ -133,6 +184,7 @@ function Workspace() {
       path={path}
       onNavigate={go}
       onLogout={() => {
+        logoutUser()
         setAuthenticated(false)
         navigate('/login')
       }}

@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { useSpotSync } from '../context/SpotSyncContext'
+﻿import React, { useMemo, useState } from 'react'
+import { useStaffIncidents } from '../hooks/useStaffIncidents'
 
 const priorityColors = {
   High: '#d04444',
@@ -13,17 +13,50 @@ const statusColors = {
   Resolved: '#16845b',
 }
 
+function formatPriority(value) {
+  const severity = String(value || '').toLowerCase()
+  if (severity === 'critical' || severity === 'high') return 'High'
+  if (severity === 'medium' || severity === 'moderate') return 'Medium'
+  return 'Low'
+}
+
+function formatStatus(value) {
+  return String(value || '').toLowerCase() === 'resolved'
+    ? 'Resolved'
+    : 'Pending'
+}
+
 export default function Mismatches() {
-  const { mismatches: items, updateMismatchStatus } = useSpotSync()
+  const {
+    incidents,
+    loading,
+    error,
+    refreshIncidents,
+    resolveStaffIncident,
+  } = useStaffIncidents()
 
   const [filter, setFilter] = useState('All')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
+  const [actionError, setActionError] = useState('')
+  const [resolving, setResolving] = useState(false)
+
+  const items = useMemo(() => incidents.map(item => ({
+    ...item,
+    space: item.parkingLotId || 'Not provided',
+    sensor: item.sensorId || 'Not assigned',
+    priority: formatPriority(item.severity),
+    status: formatStatus(item.status),
+    type: item.type || 'Occupancy mismatch',
+    expected: 'Not provided by API',
+    detected: item.description || 'Not provided',
+    time: 'Not provided by API',
+  })), [incidents])
 
   const filtered = useMemo(() => items.filter(item => {
     const matchesStatus = filter === 'All' || item.status === filter
     const matchesSearch =
-      `${item.id} ${item.space} ${item.sensor} ${item.type}`
+      `${item.id} ${item.space} ${item.sensor} ${item.type} ${item.detected}`
         .toLowerCase()
         .includes(search.toLowerCase())
 
@@ -52,6 +85,22 @@ export default function Mismatches() {
     fontWeight: 600,
   }
 
+  async function handleResolve() {
+    if (!currentSelected || resolving) return
+
+    setResolving(true)
+    setActionError('')
+
+    try {
+      await resolveStaffIncident(currentSelected.id)
+      setSelected(null)
+    } catch (err) {
+      setActionError(err.message || 'Unable to resolve this incident.')
+    } finally {
+      setResolving(false)
+    }
+  }
+
   return (
     <div style={{ padding: 24, color: '#292238', maxWidth: 1400, margin: '0 auto' }}>
       <div style={{
@@ -69,17 +118,37 @@ export default function Mismatches() {
           </p>
         </div>
 
-        <span style={{
-          background: '#f1edfa',
-          color: '#60449a',
-          padding: '9px 13px',
-          borderRadius: 8,
-          fontSize: 12,
-          fontWeight: 600,
-        }}>
-          DEMO DATA · NOT LIVE
-        </span>
+        <button
+          onClick={refreshIncidents}
+          disabled={loading}
+          style={{ ...buttonStyle, background: '#f1edfa', color: '#60449a' }}
+        >
+          {loading ? 'Refreshing...' : 'Refresh incidents'}
+        </button>
       </div>
+
+      {error && (
+        <div style={{
+          ...cardStyle,
+          marginBottom: 18,
+          color: '#b42318',
+          background: '#fff5f5',
+        }}>
+          <strong>Unable to load live incidents:</strong> {error}
+          <button
+            onClick={refreshIncidents}
+            style={{ ...buttonStyle, marginLeft: 12, background: '#60449a', color: '#fff' }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {actionError && (
+        <div style={{ ...cardStyle, marginBottom: 18, color: '#b42318' }}>
+          {actionError}
+        </div>
+      )}
 
       <div style={{
         display: 'grid',
@@ -96,7 +165,7 @@ export default function Mismatches() {
           <div key={label} style={cardStyle}>
             <div style={{ color: '#777184', fontSize: 13 }}>{label}</div>
             <div style={{ fontSize: 28, fontWeight: 700, color, marginTop: 8 }}>
-              {value}
+              {loading ? '—' : value}
             </div>
           </div>
         ))}
@@ -136,7 +205,7 @@ export default function Mismatches() {
       </div>
 
       <div style={{ ...cardStyle, overflowX: 'auto' }}>
-        <h2 style={{ fontSize: 17, margin: '0 0 16px' }}>Mismatch Records</h2>
+        <h2 style={{ fontSize: 17, margin: '0 0 16px' }}>Live Mismatch Records</h2>
 
         <table style={{
           width: '100%',
@@ -146,14 +215,22 @@ export default function Mismatches() {
         }}>
           <thead>
             <tr style={{ background: '#f8f6fb', color: '#777184', fontSize: 12 }}>
-              {['Mismatch ID', 'Parking Space', 'Sensor', 'Expected', 'Detected', 'Priority', 'Status', 'Action'].map(label => (
+              {['Mismatch ID', 'Parking Lot', 'Sensor', 'Expected', 'Description', 'Priority', 'Status', 'Action'].map(label => (
                 <th key={label} style={{ padding: 13 }}>{label}</th>
               ))}
             </tr>
           </thead>
 
           <tbody>
-            {filtered.map(item => (
+            {loading && (
+              <tr>
+                <td colSpan="8" style={{ padding: 25, textAlign: 'center', color: '#777184' }}>
+                  Loading incidents from SpotSync server...
+                </td>
+              </tr>
+            )}
+
+            {!loading && filtered.map(item => (
               <tr key={item.id} style={{ borderBottom: '1px solid #eeeaf3', fontSize: 13 }}>
                 <td style={{ padding: 14, fontWeight: 700 }}>{item.id}</td>
                 <td style={{ padding: 14 }}>{item.space}</td>
@@ -184,7 +261,10 @@ export default function Mismatches() {
                 </td>
                 <td style={{ padding: 14 }}>
                   <button
-                    onClick={() => setSelected(item)}
+                    onClick={() => {
+                      setSelected(item)
+                      setActionError('')
+                    }}
                     style={{ ...buttonStyle, background: '#f1edfa', color: '#60449a' }}
                   >
                     Review
@@ -193,10 +273,10 @@ export default function Mismatches() {
               </tr>
             ))}
 
-            {filtered.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr>
                 <td colSpan="8" style={{ padding: 25, textAlign: 'center', color: '#777184' }}>
-                  No mismatch records found.
+                  {error ? 'Live incident records are unavailable.' : 'No mismatch records found.'}
                 </td>
               </tr>
             )}
@@ -232,39 +312,39 @@ export default function Mismatches() {
             </div>
 
             <div style={{ lineHeight: 2.2, fontSize: 14, marginTop: 15 }}>
-              <div><b>Parking space:</b> {currentSelected.space}</div>
+              <div><b>Parking lot:</b> {currentSelected.space}</div>
               <div><b>Sensor:</b> {currentSelected.sensor}</div>
-              <div><b>Mismatch type:</b> {currentSelected.type}</div>
-              <div><b>Expected status:</b> {currentSelected.expected}</div>
-              <div><b>Detected status:</b> {currentSelected.detected}</div>
-              <div><b>Priority:</b> {currentSelected.priority}</div>
-              <div><b>Reported at:</b> {currentSelected.time}</div>
+              <div><b>Incident type:</b> {currentSelected.type}</div>
+              <div><b>Description:</b> {currentSelected.detected}</div>
+              <div><b>Severity:</b> {currentSelected.priority}</div>
               <div><b>Current status:</b> {currentSelected.status}</div>
+              <div><b>Reported at:</b> {currentSelected.time}</div>
             </div>
 
             <div style={{ borderTop: '1px solid #eeeaf3', marginTop: 16, paddingTop: 16 }}>
-              <p style={{ fontWeight: 600, fontSize: 14 }}>Update investigation status</p>
+              <p style={{ fontWeight: 600, fontSize: 14 }}>Incident action</p>
 
-              <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-                {['Pending', 'Investigating', 'Resolved'].map(status => (
-                  <button
-                    key={status}
-                    onClick={() => updateMismatchStatus(currentSelected.id, status)}
-                    disabled={currentSelected.status === status}
-                    style={{
-                      ...buttonStyle,
-                      background: currentSelected.status === status ? '#e8e3ef' : statusColors[status],
-                      color: currentSelected.status === status ? '#777184' : '#fff',
-                    }}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
+              {currentSelected.status !== 'Resolved' ? (
+                <button
+                  onClick={handleResolve}
+                  disabled={resolving}
+                  style={{
+                    ...buttonStyle,
+                    background: resolving ? '#aaa' : '#16845b',
+                    color: '#fff',
+                    cursor: resolving ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {resolving ? 'Resolving...' : 'Mark as Resolved'}
+                </button>
+              ) : (
+                <span style={{ color: '#16845b', fontWeight: 600 }}>
+                  This incident is resolved.
+                </span>
+              )}
 
               <p style={{ fontSize: 12, color: '#8a8295', marginTop: 15 }}>
-                Demo action only. This updates the shared displayed status locally.
-                It does not verify or correct a physical parking sensor.
+                Resolving updates the incident through the backend. It does not physically correct or verify a parking sensor.
               </p>
             </div>
           </div>
