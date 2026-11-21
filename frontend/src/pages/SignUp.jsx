@@ -50,7 +50,7 @@ export default function SignUp() {
     setMessage('')
 
     try {
-      const data = await apiRequest('/api/auth/register', {
+      const data = await apiRequest('/auth/register', {
         method: 'POST',
         body: JSON.stringify({
           name: form.name.trim(),
