@@ -246,6 +246,12 @@ export const api = {
         method: "POST",
         body: jsonBody({ token }),
       }),
+
+    exitWithTicket: (token) =>
+      apiRequest("/tickets/exit", {
+        method: "POST",
+        body: jsonBody({ token }),
+      }),
   },
 };
 

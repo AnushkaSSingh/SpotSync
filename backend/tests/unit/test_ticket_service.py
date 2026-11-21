@@ -67,7 +67,7 @@ def test_ticket_generation_rejects_inactive_session():
     assert exc.value.status_code == 409
 
 
-def test_ticket_validation_succeeds_and_marks_token_used(monkeypatch):
+def test_ticket_validation_succeeds_without_consuming_token(monkeypatch):
     raw_token = "sample-secure-ticket-token-123456"
     token = SimpleNamespace(
         parking_session_id=10,
@@ -95,8 +95,8 @@ def test_ticket_validation_succeeds_and_marks_token_used(monkeypatch):
 
     assert result["valid"] is True
     assert result["session_id"] == 10
-    assert token.used_at is not None
-    db.commit.assert_called_once()
+    assert token.used_at is None
+    db.commit.assert_not_called()
 
 
 @pytest.mark.parametrize(

@@ -10,6 +10,7 @@ from app.schemas.ticket import (
 from app.services.ticket_service import (
     generate_session_ticket,
     validate_session_ticket,
+    exit_session_with_ticket,
 )
 
 
@@ -42,3 +43,12 @@ def validate_ticket(
     current_user=Depends(require_admin),
 ):
     return validate_session_ticket(db, request.token)
+
+
+@router.post("/exit")
+def exit_with_ticket(
+    request: TicketValidationRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    return exit_session_with_ticket(db, request.token)

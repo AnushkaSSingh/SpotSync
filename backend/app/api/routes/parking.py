@@ -1,4 +1,4 @@
-﻿
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -245,7 +245,7 @@ def update_slot_availability(
                 detail="Cannot mark this slot available while a booking is active",
             )
 
-        if slot.status in {"RESERVED", "OCCUPIED", "OUT_OF_SERVICE"}:
+        if slot.status in {"RESERVED", "OCCUPIED"}:
             raise HTTPException(
                 status_code=409,
                 detail=f"Cannot mark a {slot.status} slot as available directly",

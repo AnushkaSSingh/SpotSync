@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   CarFront,
   CheckCircle2,
@@ -59,7 +60,7 @@ export default function Entry({ onCreate }) {
       const slotList = getList(slotResponse, 'slots').filter(slot => {
         const code = String(slot.display_code || slot.slot_number || '').toUpperCase()
         const status = String(slot.status || '').toUpperCase()
-        return code !== 'B2-A4' && status !== 'OUT_OF_SERVICE'
+        return status !== 'OUT_OF_SERVICE'
       })
 
       setVehicles(vehicleList)
@@ -262,7 +263,7 @@ export default function Entry({ onCreate }) {
         const updatedList = getList(updatedSlots, 'slots').filter(slot => {
           const code = String(slot.display_code || slot.slot_number || '').toUpperCase()
           const status = String(slot.status || '').toUpperCase()
-          return code !== 'B2-A4' && status !== 'OUT_OF_SERVICE'
+          return status !== 'OUT_OF_SERVICE'
         })
         setSlots(updatedList)
         setSelectedSlot(
@@ -534,8 +535,18 @@ export default function Entry({ onCreate }) {
               {created.token ? (
                 <>
                   <p className="muted">
-                    Your digital parking ticket has been generated.
+                    Your digital parking ticket has been generated. Show this QR code to staff when leaving.
                   </p>
+
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '16px', background: '#fff', borderRadius: '12px', margin: '12px 0' }}>
+                    <QRCodeSVG
+                      value={`${window.location.origin}/driver/${encodeURIComponent(created.token)}`}
+                      size={220}
+                      level="M"
+                      includeMargin
+                      title="SpotSync parking exit ticket"
+                    />
+                  </div>
 
                   <p className="muted">
                     This ticket token expires at{' '}

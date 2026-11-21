@@ -108,14 +108,6 @@ def validate_session_ticket(db: Session, raw_token: str):
             detail="Parking session is not active",
         )
 
-    token.used_at = now
-
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-
     return {
         "valid": True,
         "session_id": session.id,
@@ -123,4 +115,77 @@ def validate_session_ticket(db: Session, raw_token: str):
         "parking_slot_id": session.parking_slot_id,
         "vehicle_id": session.vehicle_id,
         "message": "Ticket validated successfully.",
+    }
+
+
+def exit_session_with_ticket(db: Session, raw_token: str):
+    """Complete a parking session using a staff-scanned QR token."""
+    if not raw_token or len(raw_token) > 256:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid ticket",
+        )
+
+    now = datetime.now(timezone.utc)
+    token = get_token_for_update(db, _hash_token(raw_token))
+
+    if token is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Ticket not found",
+        )
+
+    if token.revoked_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ticket has been revoked",
+        )
+
+    if token.used_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ticket has already been used",
+        )
+
+    if token.expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Ticket has expired",
+        )
+
+    session = (
+        db.query(ParkingSession)
+        .filter(ParkingSession.id == token.parking_session_id)
+        .with_for_update()
+        .first()
+    )
+
+    if session is None or session.status != "ACTIVE":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Parking session is not active",
+        )
+
+    # Token consumption and session completion happen in one transaction.
+    token.used_at = now
+    session.status = "COMPLETED"
+    session.ended_at = now
+
+    try:
+        db.commit()
+        db.refresh(session)
+    except Exception:
+        db.rollback()
+        raise
+
+    return {
+        "success": True,
+        "valid": True,
+        "session_id": session.id,
+        "parking_lot_id": session.parking_lot_id,
+        "parking_slot_id": session.parking_slot_id,
+        "vehicle_id": session.vehicle_id,
+        "status": session.status,
+        "ended_at": session.ended_at,
+        "message": "Ticket accepted. Parking exit completed.",
     }

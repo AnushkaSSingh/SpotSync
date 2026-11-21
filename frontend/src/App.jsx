@@ -16,6 +16,7 @@ import Login from './pages/Login'
 import StaffDashboard from './pages/StaffDashboard'
 
 import Entry from './pages/Entry'
+import TicketScanner from './pages/TicketScanner'
 import Layout from './pages/Layout'
 import Allocation from './pages/Allocation'
 import Tickets from './pages/Tickets'
@@ -43,9 +44,9 @@ function Workspace() {
   const [authChecking, setAuthChecking] = useState(true)
   const [currentUser, setCurrentUser] = useState(null)
 
-  const [spaces, setSpaces] = useState(initialSpaces)
+  const [spaces, setSpaces] = useState([])
   const [sessions, setSessions] = useState([])
-  const [alerts] = useState(initialAlerts)
+  const [alerts] = useState([])
 
   const location = useLocation()
   const navigate = useNavigate()
@@ -293,6 +294,9 @@ function Workspace() {
       break
     case '/tickets':
       page = <Tickets sessions={sessions} />
+      break
+    case '/ticket-scanner':
+      page = <TicketScanner />
       break
     case '/active':
       page = <Active sessions={sessions} go={go} />
