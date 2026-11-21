@@ -1,27 +1,35 @@
+
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { getLatestSensorReadings, getStaffIncidents, getStaffNotifications } from '../services/staffApi'
 
 const SpotSyncContext = createContext(null)
+
 const SENSOR_TO_BAY = {
-  SENSOR_001: 'B1-A1', // P1
-  SENSOR_002: 'B1-A2', // P2
-  SENSOR_003: 'B1-A3', // P3
-  SENSOR_004: 'B2-A1', // P4
-  SENSOR_005: 'B2-A2', // P5
-  SENSOR_006: 'B2-A3', // P6
-  SENSOR_007: 'B2-A4', // P7
+  SENSOR_001: 'B1-A1',
+  SENSOR_002: 'B1-A2',
+  SENSOR_003: 'B1-A3',
+  SENSOR_004: 'B2-A1',
+  SENSOR_005: 'B2-A2',
+  SENSOR_006: 'B2-A3',
+  SENSOR_007: 'B2-A4',
 }
+
 const PARKING_SENSOR_IDS = Object.keys(SENSOR_TO_BAY)
 const ENTRANCE_SENSOR_ID = 'SENSOR_008'
 const EXPECTED_SENSOR_IDS = [...PARKING_SENSOR_IDS, ENTRANCE_SENSOR_ID]
-const BAY_FLOOR = bay => String(bay || '').startsWith('B1-') ? 'Basement 1' : 'Basement 2'
+
+const BAY_FLOOR = bay =>
+  String(bay || '').startsWith('B1-') ? 'Basement 1' : 'Basement 2'
 
 function mapSensor(reading, sensorId) {
   const id = reading?.sensor_id || sensorId
+
   if (!reading) {
     const isEntrance = id === ENTRANCE_SENSOR_ID
+
     return {
-      id, sensor_id: id,
+      id,
+      sensor_id: id,
       space: isEntrance ? 'Entrance / Ramp' : SENSOR_TO_BAY[id],
       bayCode: isEntrance ? null : SENSOR_TO_BAY[id],
       slot_number: null,
@@ -36,21 +44,38 @@ function mapSensor(reading, sensorId) {
       slotId: null,
     }
   }
+
   const rawStatus = String(reading.status || 'UNKNOWN').toUpperCase()
   const timestamp = reading.timestamp || null
   const ageMs = timestamp ? Date.now() - new Date(timestamp).getTime() : Infinity
-  const isFresh = Number.isFinite(ageMs) && ageMs >= -30000 && ageMs <= 120000
+
+  const isFresh =
+    Number.isFinite(ageMs) && ageMs >= -30000 && ageMs <= 120000
+
   const isOnline = reading.is_online !== false && isFresh
-  const safeOccupancy = isOnline ? rawStatus : (rawStatus === 'FAULT' ? 'FAULT' : 'UNKNOWN')
-  const displayStatus = rawStatus === 'FAULT' ? 'Fault' : (isOnline ? 'Online' : (timestamp ? 'Stale' : 'Unknown'))
-  const slotNumber = reading.slot_number || null
+
+  const safeOccupancy = isOnline
+    ? rawStatus
+    : rawStatus === 'FAULT' ? 'FAULT' : 'UNKNOWN'
+
+  const displayStatus =
+    rawStatus === 'FAULT'
+      ? 'Fault'
+      : isOnline
+        ? 'Online'
+        : timestamp
+          ? 'Stale'
+          : 'Unknown'
+
   const isEntrance = id === ENTRANCE_SENSOR_ID
   const bayCode = isEntrance ? null : SENSOR_TO_BAY[id]
+
   return {
-    id, sensor_id: id,
+    id,
+    sensor_id: id,
     space: isEntrance ? 'Entrance / Ramp' : (bayCode || 'Unassigned bay'),
     bayCode,
-    slot_number: slotNumber,
+    slot_number: reading.slot_number || null,
     location: isEntrance ? 'Entrance / Ramp' : BAY_FLOOR(bayCode),
     status: displayStatus,
     occupancy: safeOccupancy,
@@ -103,42 +128,117 @@ export function SpotSyncProvider({ children }) {
   useEffect(() => {
     let active = true
     let busy = false
+
     const load = async () => {
       if (busy || !localStorage.getItem('spotsync_access_token')) return
+
       busy = true
+
       try {
-        const [sensorData, incidentData, notificationData] = await Promise.all([
-          getLatestSensorReadings(), getStaffIncidents(), getStaffNotifications(),
+        const results = await Promise.allSettled([
+          getLatestSensorReadings(),
+          getStaffIncidents(),
+          getStaffNotifications(),
         ])
+
         if (!active) return
-        const readings = Array.isArray(sensorData) ? sensorData : (sensorData?.readings || [])
-        const byId = new Map(readings.map(r => [r.sensor_id, r]))
-        setSensors(EXPECTED_SENSOR_IDS.map(id => mapSensor(byId.get(id), id)))
-        setMismatches((incidentData || []).map(mapIncident))
-        setNotifications((notificationData || []).map(mapNotification))
-        setLastSync(new Date())
-        setLiveError('')
-      } catch (error) {
-        if (active) setLiveError(error.message || 'Live data unavailable')
-      } finally { busy = false }
+
+        const [sensorResult, incidentResult, notificationResult] = results
+
+        // Update sensors independently of incidents and notifications.
+        if (sensorResult.status === 'fulfilled') {
+          const sensorData = sensorResult.value
+
+          const readings = Array.isArray(sensorData)
+            ? sensorData
+            : (sensorData?.readings || [])
+
+          const byId = new Map(
+            readings.map(reading => [reading.sensor_id, reading])
+          )
+
+          setSensors(
+            EXPECTED_SENSOR_IDS.map(id => mapSensor(byId.get(id), id))
+          )
+
+          setLastSync(new Date())
+          setLiveError('')
+        } else {
+          console.error('Sensor API error:', sensorResult.reason)
+          setLiveError(
+            sensorResult.reason?.message || 'Sensor data unavailable'
+          )
+        }
+
+        if (incidentResult.status === 'fulfilled') {
+          setMismatches(
+            (incidentResult.value || []).map(mapIncident)
+          )
+        } else {
+          console.error('Incident API error:', incidentResult.reason)
+        }
+
+        if (notificationResult.status === 'fulfilled') {
+          setNotifications(
+            (notificationResult.value || []).map(mapNotification)
+          )
+        } else {
+          console.error('Notification API error:', notificationResult.reason)
+        }
+      } finally {
+        busy = false
+      }
     }
+
     load()
+
     const timer = window.setInterval(load, 3000)
-    return () => { active = false; window.clearInterval(timer) }
+
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
   }, [])
 
-  const updateMismatchStatus = () => { /* Incident state is server-owned; resolve through its API. */ }
-  const markNotificationRead = () => { /* Notification state is server-owned. */ }
-  const markAllNotificationsRead = () => { /* Notification state is server-owned. */ }
+  const updateMismatchStatus = () => {
+    /* Incident state is server-owned; resolve through its API. */
+  }
 
-  const value = useMemo(() => ({ sensors, mismatches, notifications, lastSync, liveError,
-    updateMismatchStatus, markNotificationRead, markAllNotificationsRead }),
-    [sensors, mismatches, notifications, lastSync, liveError])
-  return <SpotSyncContext.Provider value={value}>{children}</SpotSyncContext.Provider>
+  const markNotificationRead = () => {
+    /* Notification state is server-owned. */
+  }
+
+  const markAllNotificationsRead = () => {
+    /* Notification state is server-owned. */
+  }
+
+  const value = useMemo(
+    () => ({
+      sensors,
+      mismatches,
+      notifications,
+      lastSync,
+      liveError,
+      updateMismatchStatus,
+      markNotificationRead,
+      markAllNotificationsRead,
+    }),
+    [sensors, mismatches, notifications, lastSync, liveError]
+  )
+
+  return (
+    <SpotSyncContext.Provider value={value}>
+      {children}
+    </SpotSyncContext.Provider>
+  )
 }
 
 export function useSpotSync() {
   const context = useContext(SpotSyncContext)
-  if (!context) throw new Error('useSpotSync must be used inside SpotSyncProvider')
+
+  if (!context) {
+    throw new Error('useSpotSync must be used inside SpotSyncProvider')
+  }
+
   return context
 }

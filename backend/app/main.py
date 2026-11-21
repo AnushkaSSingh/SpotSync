@@ -1,5 +1,11 @@
 import os
+import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    force=True
+)
 from fastapi import FastAPI
 
 from app.api.router import api_router

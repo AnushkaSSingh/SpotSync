@@ -15,10 +15,12 @@ export default function Dashboard({ go }) {
 
   useEffect(() => {
     let active = true
+    let busy = false
+    let firstLoad = true
 
     async function loadDashboard() {
-      setLoading(true)
-      setError('')
+      if (busy) return
+      busy = true
 
       try {
         let data
@@ -37,15 +39,27 @@ export default function Dashboard({ go }) {
 
         setParkingLots(lots)
         setLastUpdated(new Date())
+        setError('')
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load parking information.')
+        if (active) {
+          setError(err.message || 'Unable to load parking information.')
+        }
       } finally {
-        if (active) setLoading(false)
+        if (firstLoad && active) {
+          setLoading(false)
+          firstLoad = false
+        }
+        busy = false
       }
     }
 
     loadDashboard()
-    return () => { active = false }
+    const timer = window.setInterval(loadDashboard, 3000)
+
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
   }, [])
 
   const totals = useMemo(() => parkingLots.reduce((result, lot) => ({

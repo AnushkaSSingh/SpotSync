@@ -1,7 +1,7 @@
 ﻿
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
-  "https://spotsync-api-ag0v.onrender.com/api"
+  "http://localhost:8000/api"
 ).replace(/\/+$/, "");
 
 const TOKEN_KEY = "spotsync_access_token";
@@ -112,7 +112,7 @@ export const api = {
     overview: () => apiRequest("/parking/overview"),
 
     slots: (options = {}) => {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({ available_only: String(options.availableOnly ?? false) });
 
       if (options.parkingLotId) {
         params.set(
@@ -286,3 +286,4 @@ export async function getCurrentUser() {
 export function logoutUser() {
   clearAuthToken()
 }
+

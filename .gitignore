@@ -51,3 +51,8 @@ README.before-encoding-fix.md
 *.dump
 *.bson
 .pio/
+
+# Local project archives and temporary backups
+*.zip
+*.backup
+*.before-*
