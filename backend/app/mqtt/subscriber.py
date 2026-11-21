@@ -22,7 +22,10 @@ def on_connect(client, userdata, flags, reason_code, properties):
         logger.error("MQTT connection failed: %s", reason_code)
 
 
+
 def on_message(client, userdata, msg):
+    logger.info("MQTT message received: %s", msg.topic)
+
     db = SessionLocal()
     try:
         success = handle_sensor_message(db, msg.payload)
@@ -35,6 +38,7 @@ def on_message(client, userdata, msg):
         logger.exception("Error processing MQTT message: %s", msg.topic)
     finally:
         db.close()
+
 
 
 def start_mqtt_subscriber():
