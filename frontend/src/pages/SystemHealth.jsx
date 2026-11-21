@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Activity, Wifi, WifiOff, Server, Database,
   Bell, CheckCheck, ShieldAlert, Car, Settings,
@@ -34,7 +34,7 @@ export default function SystemHealth() {
 
   const online = sensors.filter(s => s.status === 'Online').length
   const offline = sensors.filter(s => s.status === 'Offline').length
-  const stale = sensors.filter(s => s.status === 'Stale').length
+  const stale = sensors.filter(s => s.status === 'Stale' || s.status === 'Fault').length
   const unread = notifications.filter(n => !n.read).length
 
   const filteredNotifications = useMemo(() => {
@@ -74,18 +74,7 @@ export default function SystemHealth() {
         subtitle="Monitor alerts, sensor connectivity and infrastructure performance."
       />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-        <span style={{
-          background: '#f1edfa',
-          color: '#60449a',
-          padding: '8px 12px',
-          borderRadius: 8,
-          fontSize: 12,
-          fontWeight: 700,
-        }}>
-          DEMO DATA · NOT LIVE
-        </span>
-      </div>
+
 
       <div className="stats-grid">
         {stats.map(({ label, value, icon: Icon }) => (

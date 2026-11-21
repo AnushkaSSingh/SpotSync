@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getStaffIncidents, resolveIncident } from "../services/staffApi";
 
 export function useStaffIncidents() {
@@ -22,6 +22,10 @@ export function useStaffIncidents() {
 
   useEffect(() => {
     refreshIncidents();
+    const timer = window.setInterval(refreshIncidents, 5000);
+    const onFocus = () => refreshIncidents();
+    window.addEventListener("focus", onFocus);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", onFocus); };
   }, [refreshIncidents]);
 
   const resolveStaffIncident = async (incidentId) => {

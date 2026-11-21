@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getStaffNotifications } from "../services/staffApi";
 
 export function useStaffNotifications() {
@@ -30,6 +30,10 @@ export function useStaffNotifications() {
 
   useEffect(() => {
     refreshNotifications();
+    const timer = window.setInterval(refreshNotifications, 5000);
+    const onFocus = () => refreshNotifications();
+    window.addEventListener("focus", onFocus);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", onFocus); };
   }, [refreshNotifications]);
 
   return {

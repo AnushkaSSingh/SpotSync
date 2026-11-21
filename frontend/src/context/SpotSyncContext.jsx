@@ -1,126 +1,108 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { getLatestSensorReadings, getStaffIncidents, getStaffNotifications } from '../services/staffApi'
 
 const SpotSyncContext = createContext(null)
+const PARKING_SENSOR_IDS = ['SENSOR_001','SENSOR_002','SENSOR_003','SENSOR_004','SENSOR_005','SENSOR_006','SENSOR_007']
+const BAY_FLOOR = bay => String(bay || '').startsWith('B1-') ? 'Basement 1' : 'Basement 2'
 
-const initialSensors = [
-  { id: 'S1', space: 'B1-01', location: 'Basement 1', status: 'Online', occupancy: 'Occupied', lastSeen: 'Just now', battery: '98%', signal: 'Strong' },
-  { id: 'S2', space: 'B1-02', location: 'Basement 1', status: 'Online', occupancy: 'Available', lastSeen: 'Just now', battery: '95%', signal: 'Strong' },
-  { id: 'S3', space: 'B1-03', location: 'Basement 1', status: 'Offline', occupancy: 'Unknown', lastSeen: '18 min ago', battery: '—', signal: 'No signal' },
-  { id: 'S4', space: 'B2-01', location: 'Basement 2', status: 'Online', occupancy: 'Occupied', lastSeen: '1 min ago', battery: '91%', signal: 'Good' },
-  { id: 'S5', space: 'B2-02', location: 'Basement 2', status: 'Stale', occupancy: 'Unknown', lastSeen: '12 min ago', battery: '63%', signal: 'Weak' },
-  { id: 'S6', space: 'B2-03', location: 'Basement 2', status: 'Online', occupancy: 'Available', lastSeen: 'Just now', battery: '88%', signal: 'Good' },
-  { id: 'S7', space: 'B2-04', location: 'Basement 2', status: 'Online', occupancy: 'Available', lastSeen: '2 min ago', battery: '96%', signal: 'Good' },
-  { id: 'S8', space: 'Entrance / Ramp', location: 'Entrance', status: 'Online', occupancy: 'Operational', lastSeen: 'Just now', battery: '100%', signal: 'Strong' },
-]
+function mapSensor(reading) {
+  const status = String(reading.status || 'UNKNOWN').toUpperCase()
+  const ageMs = reading.timestamp ? Date.now() - new Date(reading.timestamp).getTime() : Infinity
+  const isFresh = Number.isFinite(ageMs) && ageMs >= -30000 && ageMs <= 120000
+  const isOnline = reading.is_online !== false && isFresh
+  return {
+    id: reading.sensor_id,
+    sensor_id: reading.sensor_id,
+    space: reading.slot_number || 'Entrance / Ramp',
+    slot_number: reading.slot_number || null,
+    location: reading.slot_number ? BAY_FLOOR(reading.slot_number) : 'Entrance',
+    status: isOnline ? 'Online' : 'Offline',
+    occupancy: status,
+    readingStatus: status,
+    distance_cm: reading.distance_cm ?? null,
+    lastSeen: reading.timestamp || null,
+    timestamp: reading.timestamp || null,
+    is_online: isOnline,
+    slotId: reading.slot_id ?? null,
+  }
+}
 
-const initialMismatches = [
-  { id: 'MM-001', space: 'B1-01', sensor: 'S1', expected: 'Available', detected: 'Occupied', type: 'Occupancy Conflict', priority: 'High', status: 'Pending', time: '10:25 AM' },
-  { id: 'MM-002', space: 'B1-03', sensor: 'S3', expected: 'Occupied', detected: 'Unknown', type: 'Sensor Offline', priority: 'High', status: 'Investigating', time: '10:18 AM' },
-  { id: 'MM-003', space: 'B2-02', sensor: 'S5', expected: 'Available', detected: 'Unknown', type: 'Stale Reading', priority: 'Medium', status: 'Pending', time: '10:05 AM' },
-  { id: 'MM-004', space: 'B2-04', sensor: 'S7', expected: 'Occupied', detected: 'Available', type: 'Occupancy Conflict', priority: 'Medium', status: 'Resolved', time: '09:45 AM' },
-]
+function mapIncident(item) {
+  return {
+    id: item.id,
+    space: item.slot_number || item.parking_slot_number || 'Unassigned bay',
+    sensor: item.sensor_id || '—',
+    expected: item.expected_status || '—',
+    detected: item.detected_status || item.event_type || item.incident_type || '—',
+    type: item.incident_type || item.type || 'Parking incident',
+    priority: item.severity || 'Medium',
+    status: item.status || 'Open',
+    time: item.created_at || null,
+    description: item.description || '',
+  }
+}
 
-const initialNotifications = [
-  {
-    id: 'NT-001',
-    title: 'Sensor S3 is offline',
-    message: 'Parking bay B1-03 has stopped reporting.',
-    detail: 'Parking bay B1-03 has stopped reporting.',
-    category: 'Sensor',
-    type: 'Warning',
-    priority: 'High',
-    time: '2 min ago',
-    read: false,
-  },
-  {
-    id: 'NT-002',
-    title: 'Vehicle mismatch detected',
-    message: 'A vehicle was detected in a different bay than allocated.',
-    detail: 'A vehicle was detected in a different bay than allocated.',
-    category: 'Parking',
-    type: 'Alert',
-    priority: 'High',
-    time: '18 min ago',
-    read: false,
-  },
-  {
-    id: 'NT-003',
-    title: 'Sensor S5 has a stale reading',
-    message: 'Sensor S5 has not sent a recent reliable reading.',
-    detail: 'Sensor S5 has not sent a recent reliable reading.',
-    category: 'Sensor',
-    type: 'Warning',
-    priority: 'Medium',
-    time: '25 min ago',
-    read: false,
-  },
-  {
-    id: 'NT-004',
-    title: 'System check completed',
-    message: 'The sample monitoring check completed successfully.',
-    detail: 'The sample monitoring check completed successfully.',
-    category: 'System',
-    type: 'Info',
-    priority: 'Low',
-    time: '35 min ago',
-    read: true,
-  },
-  {
-    id: 'NT-005',
-    title: 'Parking area status updated',
-    message: 'A sample parking status update was recorded.',
-    detail: 'A sample parking status update was recorded.',
-    category: 'Parking',
-    type: 'Info',
-    priority: 'Low',
-    time: '1 hour ago',
-    read: true,
-  },
-]
+function mapNotification(item) {
+  return {
+    ...item,
+    id: item.id,
+    title: item.title || item.subject || item.type || 'SpotSync notification',
+    message: item.message || item.body || item.description || '',
+    detail: item.message || item.body || item.description || '',
+    category: item.category || item.type || 'System',
+    type: item.priority || item.severity || 'Info',
+    priority: item.priority || item.severity || 'Low',
+    time: item.created_at || item.timestamp || null,
+    read: Boolean(item.is_read ?? item.read_at ?? item.read),
+  }
+}
 
 export function SpotSyncProvider({ children }) {
-  const [sensors] = useState(initialSensors)
-  const [mismatches, setMismatches] = useState(initialMismatches)
-  const [notifications, setNotifications] = useState(initialNotifications)
+  const [sensors, setSensors] = useState([])
+  const [mismatches, setMismatches] = useState([])
+  const [notifications, setNotifications] = useState([])
+  const [lastSync, setLastSync] = useState(null)
+  const [liveError, setLiveError] = useState('')
 
-  const updateMismatchStatus = (id, status) => {
-    setMismatches(previous =>
-      previous.map(item => item.id === id ? { ...item, status } : item)
-    )
-  }
+  useEffect(() => {
+    let active = true
+    let busy = false
+    const load = async () => {
+      if (busy || !localStorage.getItem('spotsync_access_token')) return
+      busy = true
+      try {
+        const [sensorData, incidentData, notificationData] = await Promise.all([
+          getLatestSensorReadings(), getStaffIncidents(), getStaffNotifications(),
+        ])
+        if (!active) return
+        const readings = Array.isArray(sensorData) ? sensorData : (sensorData?.readings || [])
+        const byId = new Map(readings.map(r => [r.sensor_id, r]))
+        setSensors(PARKING_SENSOR_IDS.map(id => byId.get(id)).filter(Boolean).map(mapSensor))
+        setMismatches((incidentData || []).map(mapIncident))
+        setNotifications((notificationData || []).map(mapNotification))
+        setLastSync(new Date())
+        setLiveError('')
+      } catch (error) {
+        if (active) setLiveError(error.message || 'Live data unavailable')
+      } finally { busy = false }
+    }
+    load()
+    const timer = window.setInterval(load, 3000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [])
 
-  const markNotificationRead = id => {
-    setNotifications(previous =>
-      previous.map(item => item.id === id ? { ...item, read: true } : item)
-    )
-  }
+  const updateMismatchStatus = () => { /* Incident state is server-owned; resolve through its API. */ }
+  const markNotificationRead = () => { /* Notification state is server-owned. */ }
+  const markAllNotificationsRead = () => { /* Notification state is server-owned. */ }
 
-  const markAllNotificationsRead = () => {
-    setNotifications(previous =>
-      previous.map(item => ({ ...item, read: true }))
-    )
-  }
-
-  return (
-    <SpotSyncContext.Provider value={{
-      sensors,
-      mismatches,
-      notifications,
-      updateMismatchStatus,
-      markNotificationRead,
-      markAllNotificationsRead,
-    }}>
-      {children}
-    </SpotSyncContext.Provider>
-  )
+  const value = useMemo(() => ({ sensors, mismatches, notifications, lastSync, liveError,
+    updateMismatchStatus, markNotificationRead, markAllNotificationsRead }),
+    [sensors, mismatches, notifications, lastSync, liveError])
+  return <SpotSyncContext.Provider value={value}>{children}</SpotSyncContext.Provider>
 }
 
 export function useSpotSync() {
   const context = useContext(SpotSyncContext)
-
-  if (!context) {
-    throw new Error('useSpotSync must be used inside SpotSyncProvider')
-  }
-
+  if (!context) throw new Error('useSpotSync must be used inside SpotSyncProvider')
   return context
 }

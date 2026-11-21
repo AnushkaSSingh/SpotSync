@@ -69,7 +69,7 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
   ).length
 
   const staleSensors = sensors.filter(
-    s => s.status === 'Stale'
+    s => ['Stale', 'Fault', 'Offline'].includes(s.status)
   ).length
 
   const unresolvedMismatches = mismatches.filter(

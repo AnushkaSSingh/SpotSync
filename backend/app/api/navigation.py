@@ -1,3 +1,4 @@
+﻿import logging
 from fastapi import APIRouter, HTTPException, Query
 
 from app.services.navigation_service import (
@@ -7,6 +8,8 @@ from app.services.navigation_service import (
     get_route_details,
 )
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/navigation", tags=["Navigation"])
 
@@ -28,6 +31,7 @@ def navigation_graph_health():
     except NavigationDatabaseUnavailable:
         _database_error()
     except Exception:
+        logger.exception("NEO4J GRAPH HEALTH CHECK FAILED")
         raise HTTPException(
             status_code=503,
             detail="Could not read navigation graph health",
@@ -79,3 +83,4 @@ def navigate_to_parking_slot(slot_id: int):
         )
 
     return details
+

@@ -70,7 +70,7 @@ export const getParkingSlots = (parkingLotId) => {
   }
 
   return staffApiRequest(
-    `/api/parking/slots?parking_lot_id=${encodeURIComponent(parkingLotId)}`
+    `/api/parking/slots?parking_lot_id=${encodeURIComponent(parkingLotId)}&available_only=false`
   );
 };
 
@@ -152,11 +152,7 @@ export async function getOfficialParkingSpaces() {
     return {
       id: bayId,
       floor: bayId.startsWith("B1") ? "B1" : "B2",
-      status: !slot
-        ? "UNKNOWN"
-        : slot.is_available === true
-          ? "AVAILABLE"
-          : "UNKNOWN",
+      status: slot?.status || "UNKNOWN",
       backendSlotId: slot?.id ?? null,
       sensor: "—",
     };
@@ -186,8 +182,40 @@ export async function getStaffNotifications() {
 }
 
 
+export const getStaffSessions = () =>
+  staffApiRequest("/api/sessions");
+
+export const getStaffVehicles = async () => {
+  const data = await staffApiRequest("/api/vehicles");
+  return data?.vehicles || [];
+};
+
+export const createStaffVehicle = (vehicle) =>
+  staffApiRequest("/api/vehicles", {
+    method: "POST",
+    body: JSON.stringify({
+      registration_number: vehicle.registration_number,
+      vehicle_type: vehicle.vehicle_type,
+    }),
+  });
+
+export const startStaffSession = (data) =>
+  staffApiRequest("/api/sessions/entry", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const endStaffSession = (sessionId) =>
+  staffApiRequest(`/api/sessions/${sessionId}/exit`, {
+    method: "POST",
+  });
+
 export const submitSensorEvent = (event) =>
   staffApiRequest("/api/sensors/events", {
     method: "POST",
     body: JSON.stringify(event),
   });
+
+
+export const getLatestSensorReadings = () =>
+  staffApiRequest("/api/sensors/latest");

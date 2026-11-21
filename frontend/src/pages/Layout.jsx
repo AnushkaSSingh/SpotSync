@@ -61,7 +61,7 @@ const STATUS_CONFIG = {
 }
 
 function normalizeStatus(status) {
-  return String(status || 'AVAILABLE').toUpperCase()
+  return String(status || 'UNKNOWN').toUpperCase()
 }
 
 function IconBox({ icon: Icon, className = '' }) {
@@ -73,7 +73,7 @@ function IconBox({ icon: Icon, className = '' }) {
 }
 
 function StatusBadge({ status }) {
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.AVAILABLE
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.UNKNOWN
 
   return (
     <span className={`pl-status ${config.className}`}>

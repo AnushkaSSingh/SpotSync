@@ -1,10 +1,10 @@
-﻿import React, { useMemo, useState } from 'react'
+
+import React, { useMemo, useState } from 'react'
 import {
   CheckCircle2,
   LogOut,
   Search,
-  AlertTriangle,
-  X
+  AlertTriangle
 } from 'lucide-react'
 
 import {
@@ -24,28 +24,23 @@ export default function Exit({ sessions = [], onExit }) {
   const [error, setError] = useState('')
 
   const activeSessions = useMemo(
-    () =>
-      sessions.filter(
-        session => String(session.status).toUpperCase() === 'ACTIVE'
-      ),
+    () => sessions.filter(
+      session => String(session.status).toUpperCase() === 'ACTIVE'
+    ),
     [sessions]
   )
 
   const rows = useMemo(() => {
     const query = q.trim().toLowerCase()
 
-    return activeSessions.filter(session => {
-      const searchText = [
+    return activeSessions.filter(session =>
+      [
         session.vehicle,
         session.ticket,
         session.bay,
         session.customer
-      ]
-        .join(' ')
-        .toLowerCase()
-
-      return searchText.includes(query)
-    })
+      ].join(' ').toLowerCase().includes(query)
+    )
   }, [activeSessions, q])
 
   const current =
@@ -63,14 +58,13 @@ export default function Exit({ sessions = [], onExit }) {
   async function confirmExit() {
     if (!current || loading || !confirming) return
 
-    if (!current.sessionId) {
-      setError('The backend session ID is missing. This session cannot be exited.')
+    if (current.sessionId == null) {
+      setError('Backend session ID is missing. This session cannot be exited.')
       return
     }
 
-    if (String(current.status).toUpperCase() !== 'ACTIVE') {
-      setError('This session is no longer active. Refresh the session list.')
-      setConfirming(false)
+    if (!onExit) {
+      setError('Exit service is unavailable.')
       return
     }
 
@@ -93,13 +87,13 @@ export default function Exit({ sessions = [], onExit }) {
     <>
       <PageTitle
         title="Exit management"
-        subtitle="Review and confirm a parking session before recording a vehicle departure."
+        subtitle="Review the active parking session before recording a vehicle departure."
       />
 
       <div className="active-grid">
         <Card
-          title="Find a vehicle"
-          subtitle="Select the active session presented at the exit desk"
+          title="Active parking sessions"
+          subtitle={`${activeSessions.length} active session(s) retrieved from the backend`}
         >
           <div className="search-box full">
             <Search />
@@ -111,11 +105,12 @@ export default function Exit({ sessions = [], onExit }) {
                 setSelected(null)
                 setConfirming(false)
                 setError('')
+                setDone('')
               }}
             />
           </div>
 
-          <Table headers={['TICKET', 'VEHICLE', 'BAY', 'STATUS']}>
+          <Table headers={['TICKET', 'VEHICLE', 'BAY', 'ENTRY', 'STATUS']}>
             {rows.map(session => (
               <tr
                 key={session.sessionId}
@@ -128,7 +123,8 @@ export default function Exit({ sessions = [], onExit }) {
               >
                 <td><b>{session.ticket || `Session ${session.sessionId}`}</b></td>
                 <td>{session.vehicle || 'Unknown vehicle'}</td>
-                <td>{session.bay || '—'}</td>
+                <td>{session.bay || '-'}</td>
+                <td>{session.entry || '-'}</td>
                 <td><Status value={session.status} /></td>
               </tr>
             ))}
@@ -148,7 +144,7 @@ export default function Exit({ sessions = [], onExit }) {
 
         <Card
           title="Confirm vehicle exit"
-          subtitle="Check the session details before submitting the exit request"
+          subtitle="Verify the vehicle, ticket and allotted bay before submitting."
         >
           {current ? (
             <>
@@ -156,7 +152,6 @@ export default function Exit({ sessions = [], onExit }) {
                 <div className="vehicle-circle">
                   <LogOut />
                 </div>
-
                 <h2>{current.vehicle || 'Unknown vehicle'}</h2>
                 <Status value={current.status} />
               </div>
@@ -164,27 +159,31 @@ export default function Exit({ sessions = [], onExit }) {
               <div className="detail-rows">
                 <div>
                   <span>Ticket ID</span>
-                  <b>{current.ticket || '—'}</b>
+                  <b>{current.ticket || '-'}</b>
                 </div>
-
                 <div>
                   <span>Backend session ID</span>
                   <b>{current.sessionId ?? 'Missing'}</b>
                 </div>
-
                 <div>
                   <span>Parking bay</span>
-                  <b>{current.bay || '—'}</b>
+                  <b>{current.bay || '-'}</b>
                 </div>
-
+                <div>
+                  <span>Parking floor</span>
+                  <b>{current.floor || '-'}</b>
+                </div>
+                <div>
+                  <span>Vehicle type</span>
+                  <b>{current.type || '-'}</b>
+                </div>
                 <div>
                   <span>Entry time</span>
-                  <b>{current.entry || '—'}</b>
+                  <b>{current.entry || '-'}</b>
                 </div>
-
                 <div>
                   <span>Customer</span>
-                  <b>{current.customer || '—'}</b>
+                  <b>{current.customer || '-'}</b>
                 </div>
               </div>
 
@@ -194,18 +193,13 @@ export default function Exit({ sessions = [], onExit }) {
                   <b>Confirm this vehicle's exit?</b>
                   <span>
                     This sends an exit request for {current.vehicle || 'this vehicle'}.
-                    The backend must process the session and confirm the parking
-                    space's vacancy.
+                    The backend is responsible for processing the session
+                    and updating parking-space availability.
                   </span>
-
                   <div style={actionsStyle}>
-                    <Button
-                      onClick={confirmExit}
-                      disabled={loading}
-                    >
+                    <Button onClick={confirmExit} disabled={loading}>
                       {loading ? 'Submitting...' : 'Yes, confirm exit'}
                     </Button>
-
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -222,11 +216,11 @@ export default function Exit({ sessions = [], onExit }) {
 
               {!confirming && !done && (
                 <Button
+                  icon={CheckCircle2}
                   onClick={() => {
                     setError('')
                     setConfirming(true)
                   }}
-                  icon={CheckCircle2}
                   disabled={loading}
                 >
                   Confirm vehicle exit
@@ -234,9 +228,7 @@ export default function Exit({ sessions = [], onExit }) {
               )}
 
               {error && (
-                <p className="error-note" role="alert">
-                  {error}
-                </p>
+                <p className="error-note" role="alert">{error}</p>
               )}
 
               {done === String(current.sessionId) && (
@@ -245,9 +237,8 @@ export default function Exit({ sessions = [], onExit }) {
                   <div>
                     <b>Exit request accepted by the backend.</b>
                     <span>
-                      The session refresh has been requested. Parking-space
-                      vacancy must be confirmed by the backend; this page
-                      does not release the space itself.
+                      Session refresh was requested. The backend must confirm
+                      parking-space vacancy.
                     </span>
                   </div>
                 </div>
