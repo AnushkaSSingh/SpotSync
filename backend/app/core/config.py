@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     mqtt_broker: str = "localhost"
     mqtt_port: int = 1883
     mqtt_client_id: str = "spotsync-backend"
+    mqtt_username: str = ""
+    mqtt_password: str = ""
+    mqtt_tls_enabled: bool = False
     sensor_ingestion_token: str = ""
     sensor_stale_after_seconds: int = 120
     sensor_max_future_skew_seconds: int = 30

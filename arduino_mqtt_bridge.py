@@ -1,4 +1,5 @@
 
+import ssl
 import os
 import re
 import json
@@ -51,16 +52,37 @@ last_status_by_sensor = {}
 
 
 # ==========================================
-# MQTT CONFIGURATION
+# MQTT CONFIGURATION - EMQX CLOUD
 # ==========================================
 
-BROKER = os.getenv("SPOTSYNC_MQTT_BROKER", "localhost")
-PORT = int(os.getenv("SPOTSYNC_MQTT_PORT", "1883"))
+BROKER = os.getenv(
+    "SPOTSYNC_MQTT_BROKER",
+    "df78515f.ala.asia-southeast1.emqxsl.com"
+)
+
+PORT = int(os.getenv("SPOTSYNC_MQTT_PORT", "8883"))
+
+MQTT_USERNAME = os.getenv("SPOTSYNC_MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("SPOTSYNC_MQTT_PASSWORD")
+
+if not MQTT_USERNAME or not MQTT_PASSWORD:
+    raise RuntimeError("MQTT username or password is missing.")
 
 
 client = mqtt.Client(
     mqtt.CallbackAPIVersion.VERSION2,
-    client_id="spotsync_arduino_bridge"
+    client_id="spotsync_arduino_bridge",
+    protocol=mqtt.MQTTv311
+)
+
+client.username_pw_set(
+    MQTT_USERNAME,
+    MQTT_PASSWORD
+)
+
+client.tls_set(
+    cert_reqs=ssl.CERT_REQUIRED,
+    tls_version=ssl.PROTOCOL_TLS_CLIENT
 )
 
 
