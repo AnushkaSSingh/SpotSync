@@ -2,26 +2,62 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { getLatestSensorReadings, getStaffIncidents, getStaffNotifications } from '../services/staffApi'
 
 const SpotSyncContext = createContext(null)
-const PARKING_SENSOR_IDS = ['SENSOR_001','SENSOR_002','SENSOR_003','SENSOR_004','SENSOR_005','SENSOR_006','SENSOR_007']
+const SENSOR_TO_BAY = {
+  SENSOR_001: 'B1-A1', // P1
+  SENSOR_002: 'B1-A2', // P2
+  SENSOR_003: 'B1-A3', // P3
+  SENSOR_004: 'B2-A1', // P4
+  SENSOR_005: 'B2-A2', // P5
+  SENSOR_006: 'B2-A3', // P6
+  SENSOR_007: 'B2-A4', // P7
+}
+const PARKING_SENSOR_IDS = Object.keys(SENSOR_TO_BAY)
+const ENTRANCE_SENSOR_ID = 'SENSOR_008'
+const EXPECTED_SENSOR_IDS = [...PARKING_SENSOR_IDS, ENTRANCE_SENSOR_ID]
 const BAY_FLOOR = bay => String(bay || '').startsWith('B1-') ? 'Basement 1' : 'Basement 2'
 
-function mapSensor(reading) {
-  const status = String(reading.status || 'UNKNOWN').toUpperCase()
-  const ageMs = reading.timestamp ? Date.now() - new Date(reading.timestamp).getTime() : Infinity
+function mapSensor(reading, sensorId) {
+  const id = reading?.sensor_id || sensorId
+  if (!reading) {
+    const isEntrance = id === ENTRANCE_SENSOR_ID
+    return {
+      id, sensor_id: id,
+      space: isEntrance ? 'Entrance / Ramp' : SENSOR_TO_BAY[id],
+      bayCode: isEntrance ? null : SENSOR_TO_BAY[id],
+      slot_number: null,
+      location: isEntrance ? 'Entrance / Ramp' : BAY_FLOOR(SENSOR_TO_BAY[id]),
+      status: 'Unknown',
+      occupancy: 'UNKNOWN',
+      readingStatus: 'UNKNOWN',
+      distance_cm: null,
+      lastSeen: null,
+      timestamp: null,
+      is_online: false,
+      slotId: null,
+    }
+  }
+  const rawStatus = String(reading.status || 'UNKNOWN').toUpperCase()
+  const timestamp = reading.timestamp || null
+  const ageMs = timestamp ? Date.now() - new Date(timestamp).getTime() : Infinity
   const isFresh = Number.isFinite(ageMs) && ageMs >= -30000 && ageMs <= 120000
   const isOnline = reading.is_online !== false && isFresh
+  const safeOccupancy = isOnline ? rawStatus : (rawStatus === 'FAULT' ? 'FAULT' : 'UNKNOWN')
+  const displayStatus = rawStatus === 'FAULT' ? 'Fault' : (isOnline ? 'Online' : (timestamp ? 'Stale' : 'Unknown'))
+  const slotNumber = reading.slot_number || null
+  const isEntrance = id === ENTRANCE_SENSOR_ID
+  const bayCode = isEntrance ? null : SENSOR_TO_BAY[id]
   return {
-    id: reading.sensor_id,
-    sensor_id: reading.sensor_id,
-    space: reading.slot_number || 'Entrance / Ramp',
-    slot_number: reading.slot_number || null,
-    location: reading.slot_number ? BAY_FLOOR(reading.slot_number) : 'Entrance',
-    status: isOnline ? 'Online' : 'Offline',
-    occupancy: status,
-    readingStatus: status,
+    id, sensor_id: id,
+    space: isEntrance ? 'Entrance / Ramp' : (bayCode || 'Unassigned bay'),
+    bayCode,
+    slot_number: slotNumber,
+    location: isEntrance ? 'Entrance / Ramp' : BAY_FLOOR(bayCode),
+    status: displayStatus,
+    occupancy: safeOccupancy,
+    readingStatus: safeOccupancy,
     distance_cm: reading.distance_cm ?? null,
-    lastSeen: reading.timestamp || null,
-    timestamp: reading.timestamp || null,
+    lastSeen: timestamp,
+    timestamp,
     is_online: isOnline,
     slotId: reading.slot_id ?? null,
   }
@@ -77,7 +113,7 @@ export function SpotSyncProvider({ children }) {
         if (!active) return
         const readings = Array.isArray(sensorData) ? sensorData : (sensorData?.readings || [])
         const byId = new Map(readings.map(r => [r.sensor_id, r]))
-        setSensors(PARKING_SENSOR_IDS.map(id => byId.get(id)).filter(Boolean).map(mapSensor))
+        setSensors(EXPECTED_SENSOR_IDS.map(id => mapSensor(byId.get(id), id)))
         setMismatches((incidentData || []).map(mapIncident))
         setNotifications((notificationData || []).map(mapNotification))
         setLastSync(new Date())

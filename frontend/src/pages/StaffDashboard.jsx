@@ -15,13 +15,13 @@ import {
 import { useSpotSync } from '../context/SpotSyncContext'
 
 const sensorBayMap = {
-  S1: 'B1-A1',
-  S2: 'B1-A2',
-  S3: 'B1-A3',
-  S4: 'B2-A1',
-  S5: 'B2-A2',
-  S6: 'B2-A3',
-  S7: 'B2-A4',
+  SENSOR_001: 'B1-A1',
+  SENSOR_002: 'B1-A2',
+  SENSOR_003: 'B1-A3',
+  SENSOR_004: 'B2-A1',
+  SENSOR_005: 'B2-A2',
+  SENSOR_006: 'B2-A3',
+  SENSOR_007: 'B2-A4',
 }
 
 const statusLabels = {
@@ -64,12 +64,9 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
     s => s.status === 'RESERVED'
   ).length
 
-  const offlineSensors = sensors.filter(
-    s => s.status === 'Offline'
-  ).length
-
-  const staleSensors = sensors.filter(
-    s => ['Stale', 'Fault', 'Offline'].includes(s.status)
+  // Count each sensor once, even when it is both offline and stale.
+  const sensorWarnings = sensors.filter(
+    s => ['Offline', 'Stale', 'Fault', 'Unknown'].includes(s.status)
   ).length
 
   const unresolvedMismatches = mismatches.filter(
@@ -84,8 +81,7 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
     dashboardSpaces.filter(s =>
       ['UNKNOWN', 'OUT_OF_SERVICE'].includes(s.status)
     ).length +
-    offlineSensors +
-    staleSensors +
+    sensorWarnings +
     unresolvedMismatches
 
   const inUse = occupied + reserved
@@ -166,12 +162,20 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
           <p>Here's how your car park is moving right now.</p>
         </div>
 
-        <button
-          className="dashboard-primary-button"
-          onClick={() => navigate('/entry')}
-        >
-          + New entry
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            className="dashboard-primary-button"
+            onClick={() => navigate('/entry')}
+          >
+            + New entry
+          </button>
+          <button
+            className="dashboard-primary-button"
+            onClick={() => navigate('/ticket-scanner')}
+          >
+            Scan exit QR
+          </button>
+        </div>
       </section>
 
       <section className="dashboard-summary-grid">
@@ -258,7 +262,7 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
 
                   const unreliable =
                     sensor &&
-                    ['Offline', 'Stale'].includes(sensor.status)
+                    ['Offline', 'Stale', 'Fault', 'Unknown'].includes(sensor.status)
 
                   const displayStatus = unreliable
                     ? 'UNKNOWN'
@@ -338,11 +342,11 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
               <span className="alert-tag">SENSOR STATUS</span>
 
               <strong>
-                {offlineSensors + staleSensors} sensor warning(s)
+                {sensorWarnings} sensor warning(s)
               </strong>
 
               <p>
-                {offlineSensors} offline and {staleSensors} stale.
+                Includes offline, stale, faulty and unknown sensors. SENSOR_008 monitors the entrance/ramp separately.
               </p>
 
               <button onClick={() => navigate('/system-health')}>
@@ -420,7 +424,7 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
                 <p>Based on current parking status.</p>
 
                 <span className="match-score">
-                  Demo recommendation
+                  Availability-based suggestion
                 </span>
               </div>
             </div>
@@ -458,7 +462,7 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
             <div className="analytics-details">
               <div>
                 <span>Peak hours</span>
-                <strong>Sample data</strong>
+                <strong>Not available</strong>
               </div>
 
               <div>
@@ -471,8 +475,7 @@ function StaffDashboard({ spaces = [], sessions = [], alerts = [] }) {
       </section>
 
       <p className="dashboard-demo-note">
-        Dashboard preview · {unreadNotifications} unread notification(s).
-        Values are synchronized demo data; live values require backend integration.
+        {unreadNotifications} unread notification(s). Occupancy is calculated from the parking-space data currently supplied to the dashboard.
       </p>
 
       <style>{`

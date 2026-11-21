@@ -21,7 +21,7 @@ export default function Allocation() {
   const [lotId, setLotId] = useState('')
   const [slots, setSlots] = useState([])
 
-  const [vehicle, setVehicle] = useState('UP14 AB 1234')
+  const [vehicle, setVehicle] = useState('')
   const [vehicleType, setVehicleType] = useState('Car')
   const [rules, setRules] = useState(initialRules)
 

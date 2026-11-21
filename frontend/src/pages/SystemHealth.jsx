@@ -34,7 +34,10 @@ export default function SystemHealth() {
 
   const online = sensors.filter(s => s.status === 'Online').length
   const offline = sensors.filter(s => s.status === 'Offline').length
-  const stale = sensors.filter(s => s.status === 'Stale' || s.status === 'Fault').length
+  const stale = sensors.filter(s => s.status === 'Stale').length
+  const faulty = sensors.filter(s => s.status === 'Fault').length
+  const unknown = sensors.filter(s => s.status === 'Unknown' || s.status === 'UNKNOWN').length
+  const hasSensorData = sensors.length > 0
   const unread = notifications.filter(n => !n.read).length
 
   const filteredNotifications = useMemo(() => {
@@ -48,15 +51,17 @@ export default function SystemHealth() {
     item => item.id === selectedNotification?.id
   )
 
-  const systemStatus = offline > 0 || stale > 0
-    ? 'Attention Required'
-    : 'Operational'
+  const systemStatus = !hasSensorData
+    ? 'No sensor data'
+    : offline > 0 || stale > 0 || faulty > 0 || unknown > 0
+      ? 'Attention Required'
+      : 'Operational'
 
   const stats = [
     { label: 'System status', value: systemStatus, icon: Activity },
     { label: 'Sensors online', value: `${online}/${sensors.length}`, icon: Wifi },
     { label: 'Sensors offline', value: offline, icon: WifiOff },
-    { label: 'Stale readings', value: stale, icon: Clock },
+    { label: 'Stale / faulty / unknown', value: stale + faulty + unknown, icon: Clock },
   ]
 
   const cardStyle = {
@@ -291,7 +296,7 @@ export default function SystemHealth() {
       <div style={cardStyle}>
         <h2 style={{ fontSize: 18, margin: '0 0 6px' }}>Sensor Connectivity</h2>
         <p style={{ color: '#777184', fontSize: 12, margin: '0 0 16px' }}>
-          8 monitored sensors · S1–S7 parking bays · S8 entrance/ramp
+          8 monitored sensors · SENSOR_001–007 parking bays · SENSOR_008 entrance/ramp
         </p>
 
         <div style={{ overflowX: 'auto' }}>
@@ -303,7 +308,7 @@ export default function SystemHealth() {
           }}>
             <thead>
               <tr>
-                {['Sensor ID', 'Parking location', 'Connection', 'Signal', 'Battery'].map(h => (
+                {['Sensor ID', 'Parking location', 'Connection', 'Last reading'].map(h => (
                   <th key={h} style={{
                     padding: 13,
                     borderBottom: '1px solid #eee',
@@ -318,13 +323,14 @@ export default function SystemHealth() {
             </thead>
 
             <tbody>
-              {sensors.map(sensor => (
+              {sensors.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: 16, color: '#777184' }}>No sensor readings received. All parking bays must be treated as unknown until readings arrive.</td></tr>
+              ) : sensors.map(sensor => (
                 <tr key={sensor.id}>
                   <td style={{ padding: 13 }}>{sensor.id}</td>
                   <td style={{ padding: 13 }}>{sensor.space}</td>
                   <td style={{ padding: 13 }}><Status value={sensor.status} /></td>
-                  <td style={{ padding: 13 }}>{sensor.signal}</td>
-                  <td style={{ padding: 13 }}>{sensor.battery}</td>
+                  <td style={{ padding: 13 }}>{sensor.lastSeen ? new Date(sensor.lastSeen).toLocaleString() : 'No reading received'}</td>
                 </tr>
               ))}
             </tbody>

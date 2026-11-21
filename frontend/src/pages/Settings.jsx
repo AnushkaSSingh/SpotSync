@@ -9,6 +9,7 @@ import {
   Clock
 } from 'lucide-react'
 import { Card, Button } from '../components/Shared'
+import { useSpotSync } from '../context/SpotSyncContext'
 
 const field = {
   width: '100%',
@@ -46,16 +47,20 @@ export default function Settings() {
     localStorage.setItem('spotsync-theme', appearance)
   }, [appearance])
 
-  const sensors = [
-    { id: 'S1', bay: 'B1-A1', status: 'Online' },
-    { id: 'S2', bay: 'B1-A2', status: 'Online' },
-    { id: 'S3', bay: 'B1-A3', status: 'Offline' },
-    { id: 'S4', bay: 'B2-A1', status: 'Online' },
-    { id: 'S5', bay: 'B2-A2', status: 'Stale' },
-    { id: 'S6', bay: 'B2-A3', status: 'Online' },
-    { id: 'S7', bay: 'B2-A4', status: 'Online' },
-    { id: 'S8', bay: 'Entrance / Ramp', status: 'Operational' }
+  const { sensors: liveSensors, lastSync, liveError } = useSpotSync()
+  const expectedSensorIds = [
+    'SENSOR_001','SENSOR_002','SENSOR_003','SENSOR_004',
+    'SENSOR_005','SENSOR_006','SENSOR_007','SENSOR_008'
   ]
+  const liveSensorMap = new Map(liveSensors.map(sensor => [sensor.sensor_id, sensor]))
+  const sensors = expectedSensorIds.map(id => {
+    const sensor = liveSensorMap.get(id)
+    return {
+      id,
+      bay: sensor?.space || (id === 'SENSOR_008' ? 'Entrance / Ramp' : 'Bay mapping pending'),
+      status: sensor?.status || 'Unknown'
+    }
+  })
 
   const toggle = (key) => {
     setAlerts(prev => ({

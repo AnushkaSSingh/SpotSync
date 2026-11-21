@@ -27,6 +27,16 @@ const OFFICIAL_BAYS = [
   'B2-A4'
 ]
 
+const BAY_SENSOR_MAP = {
+  'B1-A1': 'SENSOR_001',
+  'B1-A2': 'SENSOR_002',
+  'B1-A3': 'SENSOR_003',
+  'B2-A1': 'SENSOR_004',
+  'B2-A2': 'SENSOR_005',
+  'B2-A3': 'SENSOR_006',
+  'B2-A4': 'SENSOR_007',
+}
+
 const STATUS_CONFIG = {
   AVAILABLE: {
     label: 'Available',
@@ -49,7 +59,7 @@ const STATUS_CONFIG = {
     icon: AlertTriangle
   },
   UNKNOWN: {
-    label: 'Mismatch',
+    label: 'Unknown',
     className: 'mismatch',
     icon: AlertTriangle
   },
@@ -99,7 +109,8 @@ export default function Layout({ spaces = [] }) {
         floor: id.substring(0, 2),
         status: normalizeStatus(existing?.status),
         vehicle: existing?.vehicle || '',
-        sensor: existing?.sensor || 'Online'
+        sensor: BAY_SENSOR_MAP[id],
+        sensorStatus: existing?.sensorStatus || existing?.sensor_status || 'Unknown'
       }
     })
   }, [spaces])
@@ -226,7 +237,7 @@ export default function Layout({ spaces = [] }) {
         <div className="pl-header-right">
           <div className="pl-live-indicator">
             <span />
-            Live layout
+            Parking layout
           </div>
 
           {/* WORKING STAFF PROFILE BUTTON */}

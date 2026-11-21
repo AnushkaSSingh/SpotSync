@@ -15,11 +15,10 @@ SENSOR_SLOTS = {
     "SENSOR_001": "B1-A1",
     "SENSOR_002": "B1-A2",
     "SENSOR_003": "B1-A3",
-    "SENSOR_004": "B1-A4",
-    "SENSOR_005": "B2-A1",
-    "SENSOR_006": "B2-A2",
-    "SENSOR_007": "B2-A3",
-    "SENSOR_008": "B2-A4",
+    "SENSOR_004": "B2-A1",
+    "SENSOR_005": "B2-A2",
+    "SENSOR_006": "B2-A3",
+    "SENSOR_007": "B2-A4",
 }
 
 
