@@ -16,7 +16,7 @@ class SensorService:
 
     @staticmethod
     def _mark_slot_unknown(slot: ParkingSlot | None) -> None:
-        if slot is None or slot.status in {"RESERVED", "OUT_OF_SERVICE"}:
+        if slot is None or slot.status == "RESERVED":
             return
 
         slot.status = "UNKNOWN"
@@ -81,12 +81,10 @@ class SensorService:
                 reading == event_type for reading in recent_events
             ):
                 if event_type == "occupied":
-                    # Never overwrite an out-of-service slot.
-                    if slot.status != "OUT_OF_SERVICE":
-                        slot.status = "OCCUPIED"
-                        slot.is_available = False
+                    slot.status = "OCCUPIED"
+                    slot.is_available = False
 
-                elif slot.status not in {"RESERVED", "OUT_OF_SERVICE"}:
+                elif slot.status != "RESERVED":
                     # A stable vacancy reading confirms the vehicle has left.
                     active_session = get_active_session_for_slot_for_update(
                         db, slot.id

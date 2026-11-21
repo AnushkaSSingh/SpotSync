@@ -37,7 +37,7 @@ def test_stale_sensor_marks_assigned_slot_unknown(monkeypatch):
     db.commit.assert_called_once()
 
 
-@pytest.mark.parametrize("status", ["RESERVED", "OUT_OF_SERVICE"])
+@pytest.mark.parametrize("status", ["RESERVED"])
 def test_stale_sensor_preserves_protected_slot_status(monkeypatch, status):
     disable_incident_calls(monkeypatch)
 
@@ -85,7 +85,7 @@ def test_direct_offline_event_marks_slot_unknown(monkeypatch):
     db.commit.assert_called_once()
 
 
-@pytest.mark.parametrize("status", ["RESERVED", "OUT_OF_SERVICE"])
+@pytest.mark.parametrize("status", ["RESERVED"])
 def test_direct_offline_event_preserves_protected_status(
     monkeypatch, status
 ):

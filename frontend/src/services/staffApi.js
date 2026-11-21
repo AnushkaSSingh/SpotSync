@@ -1,4 +1,4 @@
-const API_BASE_URL = (
+﻿const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
 ).replace(/\/+$/, "");
 
@@ -154,7 +154,7 @@ export async function getOfficialParkingSpaces() {
       floor: bayId.startsWith("B1") ? "B1" : "B2",
       status: slot?.status || "UNKNOWN",
       backendSlotId: slot?.id ?? null,
-      sensor: "—",
+      sensor: "â€”",
     };
   });
 }
@@ -219,3 +219,5 @@ export const submitSensorEvent = (event) =>
 
 export const getLatestSensorReadings = () =>
   staffApiRequest("/api/sensors/latest");
+
+
